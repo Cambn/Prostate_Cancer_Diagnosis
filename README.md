@@ -4,7 +4,7 @@ UChicago MSCA 2022 Capstone Project
 
 Sponsored by UChicago Medicine
 
-Team member: Cameron Bian, , Shiyi Zheng, Ruoxi Ni, Katrina Zhang 
+Team member: Cameron Bian, Shiyi Zheng, Ruoxi Ni, Katrina Zhang 
 
 Project in two sections
 
