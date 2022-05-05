@@ -38,7 +38,7 @@ class load_path:
                                 self.mask_path.append(mask_pa)
 
 class FetchImage:
-    def __init__(self, imagePaths, maskPaths, transforms = False):
+    def __init__(self, imagePaths, maskPaths, transforms = None):
         # store the image and mask filepaths, and augmentation
         # transforms
         self.imagePaths = imagePaths
@@ -55,13 +55,27 @@ class FetchImage:
         maskPath = self.maskPaths[idx]
         # load the image from disk, swap its channels from BGR to RGB,
         # and read the associated mask from disk in grayscale mode
-        image = pydicom.dcmread(imagePath).pixel_array.astype(int)
-        print(image.shape)
-        mask = cv2.imread(maskPath, 0)
+        image = pydicom.dcmread(imagePath).pixel_array
+        image = self.gray_2d(image)
+
+        mask = cv2.imread(maskPath,0)
+        mask = self.gray_2d(mask)
+
         # check to see if we are applying any transformations
-        if self.transforms:
+        if self.transforms is not None:
             # apply the transformations to both image and its mask
-            image = torch.tensor(image)
-            mask = torch.tensor(mask)
+
+            image = self.transforms(image)
+            mask = self.transforms(mask)
         # return a tuple of the image and its mask
         return (image, mask)
+
+    def gray_2d(self,arr):
+        # Convert to float to avoid overflow or underflow losses.
+        img_2d = arr.astype(float)
+        # Rescaling grey scale between 0-255
+        img_2d_scaled = (np.maximum(img_2d,0) / img_2d.max()) * 255.0
+        # convert to int32 for tensor
+        image_2d_int32 = img_2d_scaled.astype(int)
+
+        return image_2d_int32

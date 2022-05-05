@@ -7,8 +7,8 @@ import os
 
 
 '''
-t2-w image , dicom, (384,384,3)
-mask image , png, (384,384,3)
+t2-w image , dicom, (384,384)
+mask image , png, (384,384)
 '''
 
 '''
@@ -27,10 +27,10 @@ class Block(nn.Module):
 
 '''
 spatial dimension 384 -> 128 -> 64 -> 32
-channels:         3   -> 16  -> 32 -> 64
+channels:         1   -> 3  -> 16 -> 32
 '''
 class Encoder(nn.Module):
-    def __init__(self,channels= [3,16,32,64]):
+    def __init__(self,channels= [1,3,16,32]):
         super().__init__()
         self.encBlocks = nn.ModuleList(
             [Block(channels[i],channels[i+1])
@@ -52,10 +52,10 @@ class Encoder(nn.Module):
 
 '''
 spatial dimension 32 -> 64 -> 128 -> 384
-channels: 64 -> 32 -> 16 -> 3
+channels: 32 -> 16 -> 3 -> 1
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [64,32,16,3]):
+    def __init__(self,channels = [32,16,3,1]):
         super().__init__()
         self.channels = channels
         # self.upsample1 = nn.ConvTranspose2d()
@@ -93,8 +93,8 @@ class U_net:
     """
     implements u_net architecture
     """
-    def __init__(self,encChannels=[3,16,32,64],
-                 decChannels = [64,32,16,3],
+    def __init__(self,encChannels=[1,3,16,32],
+                 decChannels = [32,16,3,1],
                  nbClassses = 1):
         super().__init__()
         self.encoder = Encoder(encChannels)

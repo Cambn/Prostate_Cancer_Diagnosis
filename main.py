@@ -5,8 +5,8 @@ from torch.optim import Adam
 from torch.nn import BCEWithLogitsLoss
 from torchvision import transforms
 from torch.cuda import is_available
-from PIL import Image
 import matplotlib.pyplot as plt
+import pydicom
 import cv2
 from sklearn.model_selection import train_test_split
 
@@ -35,8 +35,10 @@ if __name__ == '__main__':
     transforms = transforms.Compose([transforms.ToPILImage(),
                                      transforms.ToTensor()])
 
-    train_loader = FetchImage(trainImages,trainMasks,True)
-    plt.imshow(train_loader[1][1])
+    train_loader = FetchImage(trainImages,trainMasks,None)
+
+    print(train_loader[1][1])
+    plt.imshow(train_loader[1][0])
     plt.show()
     # print('Images {}'.format(len(imagePaths)))
     # print('trainImages {}'.format(len(trainImages)))
