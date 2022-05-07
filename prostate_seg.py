@@ -3,8 +3,6 @@ import torch
 import numpy as np
 from torchvision.transforms import CenterCrop
 from torch.nn import functional as F
-import os
-
 
 '''
 t2-w image , dicom, (384,384)
@@ -89,20 +87,21 @@ class Decoder(nn.Module):
 
 
 
-class U_net:
+class U_net(nn.Module):
     """
     implements u_net architecture
     """
     def __init__(self,encChannels=[1,3,16,32],
                  decChannels = [32,16,3,1],
-                 nbClassses = 1):
+                 nbClassses = 1,retainDim = True,
+                 outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
         self.encoder = Encoder(encChannels)
         self.decoder = Decoder(decChannels)
 
         self.head = nn.Conv2d(decChannels[-1],nbClassses,1)
-        # self.retainDim = retainDim
-        # self.OutSize = outSize
+        self.retainDim = retainDim
+        self.OutSize = outSize
 
     def forward(self,x):
         encFeatures = self.encoder(x)

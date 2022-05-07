@@ -1,7 +1,4 @@
 import numpy as np
-from torchvision import transforms
-import torch
-from PIL import Image
 import cv2
 import pydicom
 import os

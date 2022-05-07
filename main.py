@@ -1,28 +1,25 @@
 from data_loader import load_path,FetchImage
 from prostate_seg import U_net
-from torch.cuda import is_available
 from torch.optim import Adam
 from torch.nn import BCEWithLogitsLoss
 from torchvision import transforms
 from torch.cuda import is_available
 import matplotlib.pyplot as plt
-import pydicom
-import cv2
 from sklearn.model_selection import train_test_split
+import config
 
 if __name__ == '__main__':
     loader = load_path()
-    d = 'DATASET/'
-    train_test = 0.3
+    d = config.DATASET_MAIN_BRUNCH
+    train_test = config.TEST_SPLIT
     rand_state = 42
     loader.get_path(d)
     (im_path, mask_path) = loader.load_path()
 
-    DEVICE = 'cuda' if is_available() else 'epu'
+    DEVICE = config.DEVICE
     # define threshold to filter weak predictions
-    THRESHOLD = 0.5
-    lr, num_epoch, batch_size = 0.001, 40, 64
-    BASE_OUTPUT = "output"
+    THRESHOLD = config.THRESHOLD
+
     imagePaths = sorted(list(im_path))
     maskPaths = sorted(list(mask_path))
     split = train_test_split(imagePaths,maskPaths,test_size=train_test,random_state = rand_state)
