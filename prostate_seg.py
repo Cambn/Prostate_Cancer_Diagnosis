@@ -3,10 +3,11 @@ import torch
 import numpy as np
 from torchvision.transforms import CenterCrop
 from torch.nn import functional as F
+import config
 
 '''
 t2-w image , dicom, (384,384)
-mask image , png, (384,384)
+mask image , png, (384,384); label 1 and 2 in the mask indicates the pheripheral and transitional zones, respectively. Boundaries were enclosed by 255
 '''
 
 '''
@@ -16,16 +17,26 @@ stores two convolution, one batch normalization, and one leaky relu activation
 class Block(nn.Module):
     def __init__(self, inChannels, outChannels):
         super().__init__()
-        self.conv1 = nn.Conv2d(inChannels,outChannels,3)
+        self.conv1 = nn.Conv2d(inChannels,outChannels,3,1,1)
+        self.conv2 = nn.Conv2d(outChannels, outChannels,3,1,1)
         self.batchnorm = nn.BatchNorm2d(outChannels)
-        self.leakyRelu = nn.LeakyReLU()
-        self.conv2 = nn.Conv2d(outChannels,outChannels,3)
+        self.relu = nn.ReLU()
+
     def forward(self,x):
-        return self.conv2(self.leakyRelu(self.conv1(x)))
+        x = self.conv1(x)
+        x = self.batchnorm(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.batchnorm(x)
+        x = self.relu(x)
+
+        return x
 
 '''
-spatial dimension 384 -> 128 -> 64 -> 32
-channels:         1   -> 3  -> 16 -> 32
+384 ->  192 -> 96 -> 48
+
+1 -> 3 -> 16 -> 32
+
 '''
 class Encoder(nn.Module):
     def __init__(self,channels= [1,3,16,32]):
@@ -34,22 +45,26 @@ class Encoder(nn.Module):
             [Block(channels[i],channels[i+1])
                    for i in range(len(channels)-1)]
         )
-        self.pool1 = nn.MaxPool2d(2)
-        self.pool2 = nn.MaxPool2d(3)
+        self.pool = nn.MaxPool2d(2)
     def forward(self,x):
         blocks = []
-        for i in range(len(self.encBlocks)):
-            block = self.encBlocks[i]
+        for block in self.encBlocks:
             x = block(x)
             blocks.append(x)
-            if i == 0:
-                x = self.pool2(x)
-            else:
-                x = self.pool1(x)
+            x = self.pool(x)
         return blocks
+        # for i in range(len(self.encBlocks)):
+        #     block = self.encBlocks[i]
+        #     x = block(x)
+        #     blocks.append(x)
+        #     if i == 0:
+        #         x = self.pool2(x)
+        #     else:
+        #         x = self.pool1(x)
+        # return blocks
 
 '''
-spatial dimension 32 -> 64 -> 128 -> 384
+spatial dimension 48 -> 96 -> 192 -> 384
 channels: 32 -> 16 -> 3 -> 1
 '''
 class Decoder(nn.Module):
@@ -58,26 +73,27 @@ class Decoder(nn.Module):
         self.channels = channels
         # self.upsample1 = nn.ConvTranspose2d()
         # self.upsample2 = nn.ConvTranspose2d()
-        # self.upconvs = nn.ModuleList(
-        #     [nn.ConvTranspose2d(channels[i],channels[i+1])
-        #      for i in range(len(channels) - 1)]
-        # )
+        self.upconvs = nn.ModuleList(
+            [nn.ConvTranspose2d(channels[i],channels[i+1],2,2)
+             for i in range(len(channels) - 1)]
+        )
         self.dec_blocks = nn.ModuleList(
             [Block(channels[i],channels[i+1])
                 for i in range(len(channels) - 1)]
         )
     def forward(self,x,encFeatures):
         for i in range(len(self.channels) -1):
-            if i == len(self.channels) - 2:
-                block = self._block_upsample_(self.channels[i],self.channels[i+1],3,2)
-            else:
-                block = self._block_upsample_(self.channels[i], self.channels[i + 1],2, 2)
-            x = block(x)
+            x = self.upconvs[i](x)
+            #if i == len(self.channels) - 2:
+            #    block = self._block_upsample_(self.channels[i],self.channels[i+1],3,2)
+            #else:
+            #    block = self._block_upsample_(self.channels[i], self.channels[i + 1],2, 2)
+            #x = block(x)
             encFeat = self.crop(encFeatures[i],x)
             x = torch.cat([x,encFeat],dim = 1)
             x = self.dec_blocks[i](x)
-    def _block_upsample_(self,inChannels,outChannels,kernel,stride,batchnorm=True):
-        return nn.ConvTranspose2d(in_channels = inChannels,out_channels = outChannels,kernel_size=kernel,stride = stride),
+    #def _block_upsample_(self,inChannels,outChannels,kernel,stride,batchnorm=True):
+    #    return nn.ConvTranspose2d(in_channels = inChannels,out_channels = outChannels,kernel_size=kernel,stride = stride),
 
     def crop(self,encFeatures,x):
         (_,_,H,W) = x.shape
@@ -109,8 +125,8 @@ class U_net(nn.Module):
                                    encFeatures[::-1][1:])
         map = self.head(decFeatures)
 
-        # if self.retainDim:
-        #     map = F.interpolate(map,self.outSize)
+        if self.retainDim:
+            map = F.interpolate(map,self.outSize)
 
         return map
 
