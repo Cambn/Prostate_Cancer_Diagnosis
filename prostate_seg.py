@@ -64,11 +64,11 @@ class Encoder(nn.Module):
         # return blocks
 
 '''
-spatial dimension 48 -> 96 -> 192 -> 384
-channels: 32 -> 16 -> 3 -> 1
+spatial dimension 48 -> 96 -> 192
+channels: 32 -> 16 -> 3
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [32,16,3,1]):
+    def __init__(self,channels = [32,16,3]):
         super().__init__()
         self.channels = channels
         # self.upsample1 = nn.ConvTranspose2d()
@@ -108,7 +108,7 @@ class U_net(nn.Module):
     implements u_net architecture
     """
     def __init__(self,encChannels=[1,3,16,32],
-                 decChannels = [32,16,3,1],
+                 decChannels = [32,16,3],
                  nbClassses = 1,retainDim = True,
                  outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
