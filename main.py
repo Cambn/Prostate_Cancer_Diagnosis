@@ -12,7 +12,7 @@ from torchvision import transforms
 from sklearn.model_selection import train_test_split
 import config
 import matplotlib.pyplot as plt
-
+import cv2
 
 if __name__ == '__main__':
     loader = load_path()
@@ -37,9 +37,9 @@ if __name__ == '__main__':
     _train = FetchImage(train_paths_Images,train_paths_Masks,transforms)
     _test = FetchImage(test_paths_Images, test_paths_Masks, transforms)
     train_Loader = DataLoader(_train,shuffle = True, batch_size = config.BATCH_SIZE,
-                              pin_memory = config.PIN_MEMORY,num_workers = os.cpu_count()-1)
+                              pin_memory = config.PIN_MEMORY)
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
-                              pin_memory=config.PIN_MEMORY, num_workers=os.cpu_count() - 1)
+                              pin_memory=config.PIN_MEMORY)
     unet = U_net().to(config.DEVICE)
     lossFunc = MultiLabelMarginLoss()
     opt = Adam(unet.parameters(), lr=config.INIT_LR)
@@ -50,17 +50,17 @@ if __name__ == '__main__':
     H = {"train_loss": [], "test_loss": []}
     startTime = time.time()
 
-    for e in tqdm(range(config.NUM_EPOCHS)):
-        unet.train()
+    # for e in tqdm(range(config.NUM_EPOCHS)):
+    #     unet.train()
+    #
+    #     totalTrainLoss, totalTestLoss = 0, 0
+    #
+    #     for (i,(x,y)) in enumerate(train_Loader):
+    #         print(i)
 
-        totalTrainLoss, totalTestLoss = 0, 0
-
-        for (i,(x,y)) in enumerate(train_Loader):
-            print(i)
-
-            print(x.shape)
-
-            print(y.shape)
+    #         print(x.shape)
+    #
+    #         print(y.shape)
     #         (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
     #
     #         pred = unet(x)
@@ -102,17 +102,23 @@ if __name__ == '__main__':
 
 
 
-    # import cv2
-    # import pydicom
+    #
+    import pydicom
 
     # enc_block = decoder_block(3,1)
     # x = torch.randn(1,3,5,5)
     # print(enc_block(x).shape)
-    # print(train_paths_Masks[0])
+    #print(train_paths_Masks[0])
+    print(pydicom.dcmread(train_paths_Images[0]))
     # plt.imshow(pydicom.dcmread(train_paths_Images[0]).pixel_array,cmap = 'gray')
     # plt.show()
     # print(train_Loader)
-    # plt.imshow(pydicom.dcmread(test_paths_Masks[1]).pixel_array,cmap = 'gray')
+    # _m = 'DATASET/Prostatex-0006/mask/IM-0026-0012.png'
+    # mask = cv2.imread(_m)#, 0)
+    # print(mask[155])
+    # #mask = self.gray_2d(mask)
+    # # print()
+    # plt.imshow(mask)#pydicom.dcmread(test_paths_Masks[1]).pixel_array,cmap = 'gray')
     # plt.show()
     # print('Images {}'.format(len(imagePaths)))
     # print('trainImages {}'.format(len(trainImages)))

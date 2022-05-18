@@ -3,6 +3,7 @@ import cv2
 import pydicom
 import os
 import config
+from torch.utils.data import Dataset
 
 
 class load_path:
@@ -36,7 +37,7 @@ class load_path:
                                 mask_pa = mask_dir + masks
                                 self.mask_path.append(mask_pa)
 
-class FetchImage:
+class FetchImage(Dataset):
     def __init__(self, imagePaths, maskPaths, transforms = None):
         self.imagePaths = imagePaths
         self.maskPaths = maskPaths
@@ -57,12 +58,16 @@ class FetchImage:
         image = self.gray_2d(image)
         mask = cv2.imread(maskPath,0)
         mask = self.gray_2d(mask)
+
+        dim = (config.INPUT_IMAGE_WIDTH, config.INPUT_IMAGE_HEIGHT)
         if image.shape[0] != config.INPUT_IMAGE_HEIGHT or image.shape[1] != config.INPUT_IMAGE_WIDTH:
-            image = cv2.resize(image, (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH))
+            print(image.shape)
+            image = cv2.resize(image, dim)
             print('Shape of image from path {}: {}'.format(imagePath, image.shape))
         if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
             # print('Shape of mask from path {}: {}'.format(maskPath, mask.shape))
-            mask = cv2.resize(mask, (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH))
+            print(mask.shape)
+            mask = cv2.resize(mask, dim)
             # print('Shape of mask from path {}: {}'.format(maskPath, mask.shape))
 
         # check to see if we are applying any transformations

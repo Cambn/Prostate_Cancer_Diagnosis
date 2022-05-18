@@ -7,9 +7,9 @@ as long as some static variables
 
 DATASET_MAIN_BRUNCH = 'DATASET/'
 TEST_SPLIT = 0.33
-DEVICE = 'cpu'
+DEVICE = 'cuda' if is_available else 'cpu'
 
-PIN_MEMORY = False
+PIN_MEMORY = True if DEVICE == "cuda" else False
 
 RAND_STATE = 42
 INPUT_IMAGE_WIDTH = 384
