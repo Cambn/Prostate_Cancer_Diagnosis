@@ -4,7 +4,7 @@ import pydicom
 import os
 import config
 from torch.utils.data import Dataset
-
+from torchvision import transforms
 
 class load_path:
     def __init__(self):
@@ -38,7 +38,7 @@ class load_path:
                                 self.mask_path.append(mask_pa)
 
 class FetchImage(Dataset):
-    def __init__(self, imagePaths, maskPaths, transforms = None):
+    def __init__(self, imagePaths, maskPaths, transforms):
         self.imagePaths = imagePaths
         self.maskPaths = maskPaths
         self.transforms = transforms
@@ -55,44 +55,45 @@ class FetchImage(Dataset):
         # load the image from disk
         # and read the associated mask from disk in grayscale mode
         image = pydicom.dcmread(imagePath).pixel_array
-        image = self.gray_2d(image)
+        image_uint8 = cv2.convertScaleAbs(image, alpha=(255.0 / 65535.0))
         mask = cv2.imread(maskPath,0)
-        mask = self.gray_2d(mask)
 
         dim = (config.INPUT_IMAGE_WIDTH, config.INPUT_IMAGE_HEIGHT)
-        if image.shape[0] != config.INPUT_IMAGE_HEIGHT or image.shape[1] != config.INPUT_IMAGE_WIDTH:
-            print(image.shape)
-            image = cv2.resize(image, dim)
-            print('Shape of image from path {}: {}'.format(imagePath, image.shape))
-        if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
-            # print('Shape of mask from path {}: {}'.format(maskPath, mask.shape))
-            print(mask.shape)
-            mask = cv2.resize(mask, dim)
-            # print('Shape of mask from path {}: {}'.format(maskPath, mask.shape))
+        image_pre = self.preprocessor(arr = image_uint8,dim = dim, img = True)
+        mask_pre = self.preprocessor(arr = mask,dim = dim, mask = True)
+
+        if self.transforms is not None:
+            image_final = self.transforms(image_pre)
+            mask_final = self.transforms(mask_pre)
 
         # check to see if we are applying any transformations
-        if self.transforms is not None:
-            # apply the transformations to both image and its mask
-            image = self.transforms(image)
-            mask = self.transforms(mask)
+        # if self.transforms is not None:
+        #     # apply the transformations to both image and its mask
+        #     image = self.transforms(image)
+        #     mask = self.transforms(mask)
 
 
         # return a tuple of the image and its mask
-        return (image, mask)
+        return (image_final, image_final)
 
-    def gray_2d(self,arr):
-        # Convert to float to avoid overflow or underflow losses.
-        img_2d = arr.astype(float)
-        # Rescaling grey scale between 0-255
-        if img_2d.max() != 0:
-            _N = img_2d.max()
-        else:
-            _N = 1
-        img_2d_scaled = (np.maximum(img_2d,0) / _N) * 255.0
-        # convert to int32 for tensor
-        image_2d_int32 = img_2d_scaled.astype(int)
+    def preprocessor(self,arr,dim,mask = False,img = False):
+        if img:
+            if arr.shape[0] != config.INPUT_IMAGE_HEIGHT or arr.shape[1] != config.INPUT_IMAGE_WIDTH:
+                arr_resize = cv2.resize(arr, dim)
+            else: arr_resize = arr
+        elif mask:
+            ## convert 255(boarders) to 0
+            idx = (arr == 255)
+            arr[idx] = 0
+            idx2 = (arr == 3)
+            arr[idx2] = 2
+            if arr.shape[0] != config.INPUT_IMAGE_HEIGHT or arr.shape[1] != config.INPUT_IMAGE_WIDTH:
+                arr_resize = cv2.resize(arr, dim)
+                ## make label 1/2/3 more apparent
+                arr_resize = arr_resize * 30
+            else: arr_resize = arr
 
-        return image_2d_int32
+        return arr_resize
 
 '''
 384 * 384

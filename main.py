@@ -50,53 +50,53 @@ if __name__ == '__main__':
     H = {"train_loss": [], "test_loss": []}
     startTime = time.time()
 
-    # for e in tqdm(range(config.NUM_EPOCHS)):
-    #     unet.train()
-    #
-    #     totalTrainLoss, totalTestLoss = 0, 0
-    #
-    #     for (i,(x,y)) in enumerate(train_Loader):
-    #         print(i)
+    for e in tqdm(range(config.NUM_EPOCHS)):
+        unet.train()
 
-    #         print(x.shape)
-    #
-    #         print(y.shape)
-    #         (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
-    #
-    #         pred = unet(x)
-    #         loss = lossFunc(x,y)
-    #
-    #         opt.zero_grad()
-    #         loss.backward()
-    #         opt.step()
-    #
-    #         totalTestLoss += lossFunc(pred,y)
-    #     with torch.no_grad():
-    #         unet.eval()
-    #
-    #         for (x,y) in test_Loader:
-    #             (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
-    #
-    #             pred = unet(x)
-    #             totalTestLoss += lossFunc(pred,y)
-    #
-    #     avgTrainLoss = totalTrainLoss / trainSteps
-    #     avgTestLoss = totalTestLoss / testSteps
-    #
-    #     print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
-    #     print("Train loss: {:.6f}, Test loss: {:.4f}".format(avgTrainLoss, avgTestLoss))
-    # # display the total time needed to perform the training
-    # endTime = time.time()
-    # print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
-    # plt.style.use("ggplot")
-    # plt.figure()
-    # plt.plot(H["train_loss"], label="train_loss")
-    # plt.plot(H["test_loss"], label="test_loss")
-    # plt.title("Training Loss on Dataset")
-    # plt.xlabel("Epoch #")
-    # plt.ylabel("Loss")
-    # plt.legend(loc="lower left")
-    # plt.savefig(config.PLOT_PATH)
+        totalTrainLoss, totalTestLoss = 0, 0
+
+        for (i,(x,y)) in enumerate(train_Loader):
+            print(i)
+
+            print(x.shape)
+
+            print(y.shape)
+            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
+
+            pred = unet(x)
+            loss = lossFunc(x,y)
+
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+            totalTestLoss += lossFunc(pred,y)
+        with torch.no_grad():
+            unet.eval()
+
+            for (x,y) in test_Loader:
+                (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
+
+                pred = unet(x)
+                totalTestLoss += lossFunc(pred,y)
+
+        avgTrainLoss = totalTrainLoss / trainSteps
+        avgTestLoss = totalTestLoss / testSteps
+
+        print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
+        print("Train loss: {:.6f}, Test loss: {:.4f}".format(avgTrainLoss, avgTestLoss))
+    # display the total time needed to perform the training
+    endTime = time.time()
+    print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
+    plt.style.use("ggplot")
+    plt.figure()
+    plt.plot(H["train_loss"], label="train_loss")
+    plt.plot(H["test_loss"], label="test_loss")
+    plt.title("Training Loss on Dataset")
+    plt.xlabel("Epoch #")
+    plt.ylabel("Loss")
+    plt.legend(loc="lower left")
+    plt.savefig(config.PLOT_PATH)
     # torch.save(unet, config.MODEL_PATH)
 
 

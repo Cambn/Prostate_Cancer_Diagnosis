@@ -109,7 +109,7 @@ class U_net(nn.Module):
     """
     def __init__(self,encChannels=[1,3,16,32],
                  decChannels = [32,16,3],
-                 nbClassses = 1,retainDim = True,
+                 nbClassses = 3,retainDim = True,
                  outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
         self.encoder = Encoder(encChannels)
