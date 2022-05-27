@@ -52,6 +52,7 @@ class Encoder(nn.Module):
             x = block(x)
             blocks.append(x)
             x = self.pool(x)
+            print(x.shape)
         return blocks
         # for i in range(len(self.encBlocks)):
         #     block = self.encBlocks[i]

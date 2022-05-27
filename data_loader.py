@@ -90,7 +90,7 @@ class FetchImage(Dataset):
             if arr.shape[0] != config.INPUT_IMAGE_HEIGHT or arr.shape[1] != config.INPUT_IMAGE_WIDTH:
                 arr_resize = cv2.resize(arr, dim)
                 ## make label 1/2/3 more apparent
-                arr_resize = arr_resize * 30
+                ##arr_resize = arr_resize * 30
             else: arr_resize = arr
 
         return arr_resize

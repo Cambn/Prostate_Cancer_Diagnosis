@@ -5,7 +5,7 @@ import torch
 # import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torch.nn import MultiLabelMarginLoss
+from torch.nn import MultiLabelMarginLoss,CrossEntropyLoss
 import time
 from tqdm import tqdm
 from torchvision import transforms
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
                               pin_memory=config.PIN_MEMORY)
     unet = U_net().to(config.DEVICE)
-    lossFunc = MultiLabelMarginLoss()
+    lossFunc = CrossEntropyLoss()
     opt = Adam(unet.parameters(), lr=config.INIT_LR)
 
     trainSteps = len(train_paths_Images) // config.BATCH_SIZE
@@ -103,13 +103,13 @@ if __name__ == '__main__':
 
 
     #
-    import pydicom
+    
 
     # enc_block = decoder_block(3,1)
     # x = torch.randn(1,3,5,5)
     # print(enc_block(x).shape)
     #print(train_paths_Masks[0])
-    print(pydicom.dcmread(train_paths_Images[0]))
+    
     # plt.imshow(pydicom.dcmread(train_paths_Images[0]).pixel_array,cmap = 'gray')
     # plt.show()
     # print(train_Loader)
