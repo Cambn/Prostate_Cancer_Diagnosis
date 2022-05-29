@@ -39,7 +39,7 @@ class Block(nn.Module):
 
 '''
 class Encoder(nn.Module):
-    def __init__(self,channels= [1,3,16,32]):
+    def __init__(self,channels= [1,16,32,64]):
         super().__init__()
         self.encBlocks = nn.ModuleList(
             [Block(channels[i],channels[i+1])
@@ -52,7 +52,7 @@ class Encoder(nn.Module):
             x = block(x)
             blocks.append(x)
             x = self.pool(x)
-            print(x.shape)
+            #print(x.shape)
         return blocks
         # for i in range(len(self.encBlocks)):
         #     block = self.encBlocks[i]
@@ -69,11 +69,10 @@ spatial dimension 48 -> 96 -> 192
 channels: 32 -> 16 -> 3
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [32,16,3]):
+    def __init__(self,channels = [64,32,16]):
         super().__init__()
         self.channels = channels
-        # self.upsample1 = nn.ConvTranspose2d()
-        # self.upsample2 = nn.ConvTranspose2d()
+        
         self.upconvs = nn.ModuleList(
             [nn.ConvTranspose2d(channels[i],channels[i+1],2,2)
              for i in range(len(channels) - 1)]
@@ -84,15 +83,17 @@ class Decoder(nn.Module):
         )
     def forward(self,x,encFeatures):
         for i in range(len(self.channels) -1):
+            #print(i)
+            #print(r'x before upconvs:{}'.format(x.shape))
             x = self.upconvs[i](x)
-            #if i == len(self.channels) - 2:
-            #    block = self._block_upsample_(self.channels[i],self.channels[i+1],3,2)
-            #else:
-            #    block = self._block_upsample_(self.channels[i], self.channels[i + 1],2, 2)
-            #x = block(x)
+            #print(r'x after upconvs:{}'.format(x.shape))
+            #print(r'enc feature:{}'.format(encFeatures[i].shape))
             encFeat = self.crop(encFeatures[i],x)
             x = torch.cat([x,encFeat],dim = 1)
+            #print(r'after cat: {}'.format(x.shape))
             x = self.dec_blocks[i](x)
+            #print(r'after dec_block: {}'.format(x.shape))
+        return x
     #def _block_upsample_(self,inChannels,outChannels,kernel,stride,batchnorm=True):
     #    return nn.ConvTranspose2d(in_channels = inChannels,out_channels = outChannels,kernel_size=kernel,stride = stride),
 
@@ -108,8 +109,8 @@ class U_net(nn.Module):
     """
     implements u_net architecture
     """
-    def __init__(self,encChannels=[1,3,16,32],
-                 decChannels = [32,16,3],
+    def __init__(self,encChannels=[1,16,32,64],
+                 decChannels = [64,32,16],
                  nbClassses = 3,retainDim = True,
                  outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
@@ -127,7 +128,7 @@ class U_net(nn.Module):
         map = self.head(decFeatures)
 
         if self.retainDim:
-            map = F.interpolate(map,self.outSize)
+            map = F.interpolate(map,self.OutSize)
 
         return map
 

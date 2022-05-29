@@ -7,10 +7,11 @@ as long as some static variables
 
 DATASET_MAIN_BRUNCH = 'DATASET/'
 TEST_SPLIT = 0.33
-DEVICE = 'cuda' if is_available else 'cpu'
-
-PIN_MEMORY = True if DEVICE == "cuda" else False
-
+# DEVICE = 'cuda' if is_available else 'cpu'
+#
+# PIN_MEMORY = True if DEVICE == "cuda" else False
+DEVICE = 'cpu'
+PIN_MEMORY = False
 RAND_STATE = 42
 INPUT_IMAGE_WIDTH = 384
 INPUT_IMAGE_HEIGHT = 384
@@ -18,8 +19,8 @@ INPUT_IMAGE_HEIGHT = 384
 THRESHOLD = 0.5
 
 INIT_LR = 0.001
-NUM_EPOCHS = 40
-BATCH_SIZE = 64
+NUM_EPOCHS = 10
+BATCH_SIZE = 32
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 3

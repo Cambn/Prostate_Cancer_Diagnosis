@@ -1,6 +1,6 @@
 import os
 from data_loader import load_path,FetchImage
-from prostate_seg import U_net
+from prostate_seg import *
 import torch
 # import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -12,7 +12,7 @@ from torchvision import transforms
 from sklearn.model_selection import train_test_split
 import config
 import matplotlib.pyplot as plt
-import cv2
+
 
 if __name__ == '__main__':
     loader = load_path()
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     # define threshold to filter weak predictions
     THRESHOLD = config.THRESHOLD
 
-    imagePaths = sorted(list(im_path))
-    maskPaths = sorted(list(mask_path))
+    imagePaths = sorted(list(im_path))[:1000]
+    maskPaths = sorted(list(mask_path))[:1000]
     split = train_test_split(imagePaths,maskPaths,test_size=config.TEST_SPLIT,random_state = config.RAND_STATE)
     '''
     total number of images for dicom and mask: 4104
@@ -37,9 +37,9 @@ if __name__ == '__main__':
     _train = FetchImage(train_paths_Images,train_paths_Masks,transforms)
     _test = FetchImage(test_paths_Images, test_paths_Masks, transforms)
     train_Loader = DataLoader(_train,shuffle = True, batch_size = config.BATCH_SIZE,
-                              pin_memory = config.PIN_MEMORY)
+                              pin_memory = config.PIN_MEMORY,num_workers = 4)
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
-                              pin_memory=config.PIN_MEMORY)
+                              pin_memory=config.PIN_MEMORY,num_workers = 4)
     unet = U_net().to(config.DEVICE)
     lossFunc = CrossEntropyLoss()
     opt = Adam(unet.parameters(), lr=config.INIT_LR)
@@ -56,33 +56,45 @@ if __name__ == '__main__':
         totalTrainLoss, totalTestLoss = 0, 0
 
         for (i,(x,y)) in enumerate(train_Loader):
-            print(i)
 
-            print(x.shape)
-
-            print(y.shape)
-            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
-
+            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE).long())
+            y = torch.squeeze(y,dim = 1)
+            #print(y.shape)
             pred = unet(x)
-            loss = lossFunc(x,y)
+            #print(r'pred before argmax: {}'.format(pred.shape))
+            #pred = torch.argmax(pred,dim = 1)
+            #print(r'pred after argmax: {}'.format(pred.shape))
+            loss = lossFunc(pred,y)
 
             opt.zero_grad()
+            #loss.requires_grad = True
             loss.backward()
             opt.step()
 
-            totalTestLoss += lossFunc(pred,y)
+            totalTrainLoss += lossFunc(pred,y)
+
+        ## switch off autograd
         with torch.no_grad():
+
+            ## set the model in evaluation mode
             unet.eval()
 
+            ## loop over the validation set
             for (x,y) in test_Loader:
-                (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
-
+                (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE).long())
+                y = torch.squeeze(y, dim=1)
                 pred = unet(x)
+                #pred = torch.argmax(pred, dim=1)
                 totalTestLoss += lossFunc(pred,y)
 
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
 
+        #print(avgTrainLoss)
+        #print(avgTestLoss)
+        H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
+        H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
+        print()
         print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
         print("Train loss: {:.6f}, Test loss: {:.4f}".format(avgTrainLoss, avgTestLoss))
     # display the total time needed to perform the training
@@ -97,17 +109,13 @@ if __name__ == '__main__':
     plt.ylabel("Loss")
     plt.legend(loc="lower left")
     plt.savefig(config.PLOT_PATH)
-    # torch.save(unet, config.MODEL_PATH)
+    torch.save(unet, config.MODEL_PATH)
 
 
 
 
     #
-    
 
-    # enc_block = decoder_block(3,1)
-    # x = torch.randn(1,3,5,5)
-    # print(enc_block(x).shape)
     #print(train_paths_Masks[0])
     
     # plt.imshow(pydicom.dcmread(train_paths_Images[0]).pixel_array,cmap = 'gray')
@@ -130,3 +138,11 @@ if __name__ == '__main__':
     try skipping? / size alignment
     pre-trained model (etc. resnet, heart from ct?)
     '''
+
+    # x = torch.randn(1,1,32,32)
+    # _e = Encoder()
+    # __e = _e(x)
+    # y = torch.randn(1, 32, 4, 4)
+    # _d = Decoder()
+    # _d(__e[::-1][0], __e[::-1][1:])
+    # print(torch.nn.Conv2d(16,3,1))
