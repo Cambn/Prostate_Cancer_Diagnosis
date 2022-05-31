@@ -1,5 +1,5 @@
 import os
-from data_loader import load_path,FetchImage
+from data_loader import *
 from prostate_seg import *
 import torch
 # import torch.nn as nn
@@ -11,10 +11,12 @@ from tqdm import tqdm
 from torchvision import transforms
 from sklearn.model_selection import train_test_split
 import config
-import matplotlib.pyplot as plt
 
+import logging
 
 if __name__ == '__main__':
+
+
     loader = load_path()
 
     loader.get_path(config.DATASET_MAIN_BRUNCH)
@@ -24,8 +26,8 @@ if __name__ == '__main__':
     # define threshold to filter weak predictions
     THRESHOLD = config.THRESHOLD
 
-    imagePaths = sorted(list(im_path))[:1000]
-    maskPaths = sorted(list(mask_path))[:1000]
+    imagePaths = sorted(list(im_path))
+    maskPaths = sorted(list(mask_path))
     split = train_test_split(imagePaths,maskPaths,test_size=config.TEST_SPLIT,random_state = config.RAND_STATE)
     '''
     total number of images for dicom and mask: 4104
@@ -48,6 +50,8 @@ if __name__ == '__main__':
     testSteps = len(test_paths_Images) // config.BATCH_SIZE
 
     H = {"train_loss": [], "test_loss": []}
+    print()
+    print('[INFO] training the network...')
     startTime = time.time()
 
     for e in tqdm(range(config.NUM_EPOCHS)):
@@ -100,15 +104,7 @@ if __name__ == '__main__':
     # display the total time needed to perform the training
     endTime = time.time()
     print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
-    plt.style.use("ggplot")
-    plt.figure()
-    plt.plot(H["train_loss"], label="train_loss")
-    plt.plot(H["test_loss"], label="test_loss")
-    plt.title("Training Loss on Dataset")
-    plt.xlabel("Epoch #")
-    plt.ylabel("Loss")
-    plt.legend(loc="lower left")
-    plt.savefig(config.PLOT_PATH)
+    config.plot_loss(H,config.PLOT_PATH)
     torch.save(unet, config.MODEL_PATH)
 
 

@@ -66,13 +66,6 @@ class FetchImage(Dataset):
             image_final = self.transforms(image_pre)
             mask_final = self.transforms(mask_pre)
 
-        # check to see if we are applying any transformations
-        # if self.transforms is not None:
-        #     # apply the transformations to both image and its mask
-        #     image = self.transforms(image)
-        #     mask = self.transforms(mask)
-
-
         # return a tuple of the image and its mask
         return (image_final, image_final)
 
