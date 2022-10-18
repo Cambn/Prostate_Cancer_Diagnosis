@@ -38,10 +38,10 @@ def plot_loss(H,path):
 
 DATASET_MAIN_BRUNCH = 'DATASET/'
 TEST_SPLIT = 0.33
-# DEVICE = 'cuda' if is_available else 'cpu'
+DEVICE = 'cuda' if is_available else 'cpu'
 #
 # PIN_MEMORY = True if DEVICE == "cuda" else False
-DEVICE = 'cpu'
+#DEVICE = 'cpu'
 PIN_MEMORY = False
 RAND_STATE = 42
 INPUT_IMAGE_WIDTH = 384

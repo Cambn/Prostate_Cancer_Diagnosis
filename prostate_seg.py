@@ -89,6 +89,7 @@ class Decoder(nn.Module):
             #print(r'x after upconvs:{}'.format(x.shape))
             #print(r'enc feature:{}'.format(encFeatures[i].shape))
             encFeat = self.crop(encFeatures[i],x)
+            #print(r'enc shape:{}'.format(encFeat.shape))
             x = torch.cat([x,encFeat],dim = 1)
             #print(r'after cat: {}'.format(x.shape))
             x = self.dec_blocks[i](x)

@@ -17,7 +17,7 @@ import logging
 if __name__ == '__main__':
 
 
-    loader = load_path()
+    loader = path_loader()
 
     loader.get_path(config.DATASET_MAIN_BRUNCH)
     (im_path, mask_path) = loader.load_path()
@@ -26,8 +26,8 @@ if __name__ == '__main__':
     # define threshold to filter weak predictions
     THRESHOLD = config.THRESHOLD
 
-    imagePaths = sorted(list(im_path))
-    maskPaths = sorted(list(mask_path))
+    imagePaths = sorted(list(im_path))[:2000]
+    maskPaths = sorted(list(mask_path))[:2000]
     split = train_test_split(imagePaths,maskPaths,test_size=config.TEST_SPLIT,random_state = config.RAND_STATE)
     '''
     total number of images for dicom and mask: 4104

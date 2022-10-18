@@ -6,7 +6,7 @@ import config
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-class load_path:
+class path_loader:
     def __init__(self):
         self.im = []
         self.gt_mask = []
@@ -53,6 +53,7 @@ class FetchImage(Dataset):
         imagePath = self.imagePaths[idx]
         maskPath = self.maskPaths[idx]
         # load the image from disk
+        # convert it to uint8
         # and read the associated mask from disk in grayscale mode
         image = pydicom.dcmread(imagePath).pixel_array
         image_uint8 = cv2.convertScaleAbs(image, alpha=(255.0 / 65535.0))
@@ -65,7 +66,8 @@ class FetchImage(Dataset):
         if self.transforms is not None:
             image_final = self.transforms(image_pre)
             mask_final = self.transforms(mask_pre)
-
+        
+        ## down scale the iamge to 256 * 256
         # return a tuple of the image and its mask
         return (image_final, image_final)
 
