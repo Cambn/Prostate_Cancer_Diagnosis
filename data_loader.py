@@ -5,6 +5,8 @@ import os
 import config
 from torch.utils.data import Dataset
 from torchvision import transforms
+import numpy as np
+import re
 
 class path_loader:
     def __init__(self):
@@ -20,22 +22,45 @@ class path_loader:
         for prostatex in list_under_main:
             if prostatex.__contains__('Prostatex'):
                 prostatex_dir = main_brunch + prostatex + '/'
-                list_under_prostatex = os.listdir(prostatex_dir)
-                for folders in list_under_prostatex:
-                    if folders == 't2_tse_tra':
-                        t2_dir = prostatex_dir + folders + '/'
-                        list_dir_1 = os.listdir(t2_dir)
-                        for images in list_dir_1:
-                            if images.endswith('.dcm'):
-                                image_pa = t2_dir + images
-                                self.image_path.append(image_pa)
-                    elif folders == 'mask':
-                        mask_dir = prostatex_dir + folders + '/'
-                        list_dir_mask = os.listdir(mask_dir)
-                        for masks in list_dir_mask:
-                            if masks.endswith('.png'):
-                                mask_pa = mask_dir + masks
-                                self.mask_path.append(mask_pa)
+
+                patient_image_folder, mask_image_folder = prostatex_dir + 't2_tse_tra/', prostatex_dir + 'mask/'
+
+                image_list = os.listdir(patient_image_folder)
+                reg = re.compile(r'.+\.dcm$')
+                reg_image_list = list(filter(reg.findall, image_list))
+
+                total_num = len(reg_image_list)
+                idx = np.random.choice(np.arange(total_num))
+                if idx // 10 != 0:
+                    suffix = '00' + str(idx)
+                else:
+                    suffix = '000' + str(idx)
+                image_dir = patient_image_folder + reg_image_list[0].split('-')[0] + '-' + \
+                            reg_image_list[0].split('-')[1] + '-' + suffix + '.dcm'
+                mask_dir = mask_image_folder + reg_image_list[0].split('-')[0] + '-' + \
+                           reg_image_list[0].split('-')[1] + '-' + suffix + '.png'
+                self.image_path.append(image_dir)
+                self.mask_path.append(mask_dir)
+        # list_under_main = os.listdir(main_brunch)
+        # for prostatex in list_under_main:
+        #     if prostatex.__contains__('Prostatex'):
+        #         prostatex_dir = main_brunch + prostatex + '/'
+        #         list_under_prostatex = os.listdir(prostatex_dir)
+        #         for folders in list_under_prostatex:
+        #             if folders == 't2_tse_tra':
+        #                 t2_dir = prostatex_dir + folders + '/'
+        #                 list_dir_1 = os.listdir(t2_dir)
+        #                 for images in list_dir_1:
+        #                     if images.endswith('.dcm'):
+        #                         image_pa = t2_dir + images
+        #                         self.image_path.append(image_pa)
+        #             elif folders == 'mask':
+        #                 mask_dir = prostatex_dir + folders + '/'
+        #                 list_dir_mask = os.listdir(mask_dir)
+        #                 for masks in list_dir_mask:
+        #                     if masks.endswith('.png'):
+        #                         mask_pa = mask_dir + masks
+        #                         self.mask_path.append(mask_pa)
 
 class FetchImage(Dataset):
     def __init__(self, imagePaths, maskPaths, transforms):
