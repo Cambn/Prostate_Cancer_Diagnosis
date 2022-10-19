@@ -5,7 +5,7 @@ import torch
 # import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torch.nn import MultiLabelMarginLoss,CrossEntropyLoss
+from torch.nn import CrossEntropyLoss
 import time
 from tqdm import tqdm
 from torchvision import transforms
@@ -15,8 +15,6 @@ import config
 import logging
 
 if __name__ == '__main__':
-
-
     loader = path_loader()
 
     loader.get_path(config.DATASET_MAIN_BRUNCH)
@@ -26,9 +24,7 @@ if __name__ == '__main__':
     # define threshold to filter weak predictions
     THRESHOLD = config.THRESHOLD
 
-    imagePaths = sorted(list(im_path))[:2000]
-    maskPaths = sorted(list(mask_path))[:2000]
-    split = train_test_split(imagePaths,maskPaths,test_size=config.TEST_SPLIT,random_state = config.RAND_STATE)
+    split = train_test_split(im_path,mask_path,test_size=config.TEST_SPLIT,random_state = config.RAND_STATE)
     '''
     total number of images for dicom and mask: 4104
     # of training batch: 2749
@@ -55,6 +51,7 @@ if __name__ == '__main__':
     startTime = time.time()
 
     for e in tqdm(range(config.NUM_EPOCHS)):
+        torch.cuda.empty_cache()
         unet.train()
 
         totalTrainLoss, totalTestLoss = 0, 0
@@ -101,6 +98,7 @@ if __name__ == '__main__':
         print()
         print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
         print("Train loss: {:.6f}, Test loss: {:.4f}".format(avgTrainLoss, avgTestLoss))
+        torch.cuda.empty_cache()
     # display the total time needed to perform the training
     endTime = time.time()
     print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))

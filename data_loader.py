@@ -31,36 +31,11 @@ class path_loader:
 
                 total_num = len(reg_image_list)
                 idx = np.random.choice(np.arange(total_num))
-                if idx // 10 != 0:
-                    suffix = '00' + str(idx)
-                else:
-                    suffix = '000' + str(idx)
-                image_dir = patient_image_folder + reg_image_list[0].split('-')[0] + '-' + \
-                            reg_image_list[0].split('-')[1] + '-' + suffix + '.dcm'
-                mask_dir = mask_image_folder + reg_image_list[0].split('-')[0] + '-' + \
-                           reg_image_list[0].split('-')[1] + '-' + suffix + '.png'
+                image_dir = patient_image_folder + reg_image_list[idx]
+                mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
                 self.image_path.append(image_dir)
                 self.mask_path.append(mask_dir)
-        # list_under_main = os.listdir(main_brunch)
-        # for prostatex in list_under_main:
-        #     if prostatex.__contains__('Prostatex'):
-        #         prostatex_dir = main_brunch + prostatex + '/'
-        #         list_under_prostatex = os.listdir(prostatex_dir)
-        #         for folders in list_under_prostatex:
-        #             if folders == 't2_tse_tra':
-        #                 t2_dir = prostatex_dir + folders + '/'
-        #                 list_dir_1 = os.listdir(t2_dir)
-        #                 for images in list_dir_1:
-        #                     if images.endswith('.dcm'):
-        #                         image_pa = t2_dir + images
-        #                         self.image_path.append(image_pa)
-        #             elif folders == 'mask':
-        #                 mask_dir = prostatex_dir + folders + '/'
-        #                 list_dir_mask = os.listdir(mask_dir)
-        #                 for masks in list_dir_mask:
-        #                     if masks.endswith('.png'):
-        #                         mask_pa = mask_dir + masks
-        #                         self.mask_path.append(mask_pa)
+
 
 class FetchImage(Dataset):
     def __init__(self, imagePaths, maskPaths, transforms):
@@ -82,8 +57,10 @@ class FetchImage(Dataset):
         # and read the associated mask from disk in grayscale mode
         image = pydicom.dcmread(imagePath).pixel_array
         image_uint8 = cv2.convertScaleAbs(image, alpha=(255.0 / 65535.0))
+
         mask = cv2.imread(maskPath,0)
 
+        # down scale the iamge to 256 * 256
         dim = (config.INPUT_IMAGE_WIDTH, config.INPUT_IMAGE_HEIGHT)
         image_pre = self.preprocessor(arr = image_uint8,dim = dim, img = True)
         mask_pre = self.preprocessor(arr = mask,dim = dim, mask = True)
@@ -91,8 +68,6 @@ class FetchImage(Dataset):
         if self.transforms is not None:
             image_final = self.transforms(image_pre)
             mask_final = self.transforms(mask_pre)
-        
-        ## down scale the iamge to 256 * 256
         # return a tuple of the image and its mask
         return (image_final, image_final)
 

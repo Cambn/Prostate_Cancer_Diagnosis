@@ -17,7 +17,7 @@ stores two convolution, one batch normalization, and one leaky relu activation
 class Block(nn.Module):
     def __init__(self, inChannels, outChannels):
         super().__init__()
-        self.conv1 = nn.Conv2d(inChannels,outChannels,3,1,1)
+        self.conv1 = nn.Conv2d(inChannels, outChannels,3,1,1)
         self.conv2 = nn.Conv2d(outChannels, outChannels,3,1,1)
         self.batchnorm = nn.BatchNorm2d(outChannels)
         self.relu = nn.ReLU()
@@ -33,13 +33,12 @@ class Block(nn.Module):
         return x
 
 '''
-384 ->  192 -> 96 -> 48
+input shape: 256 -> 128 -> 64 -> 32
 
-1 -> 3 -> 16 -> 32
-
+# num of channel: 1 -> 32 -> 64 -> 128 -> 256
 '''
 class Encoder(nn.Module):
-    def __init__(self,channels= [1,16,32,64]):
+    def __init__(self,channels= [1,32,64,128,256]):
         super().__init__()
         self.encBlocks = nn.ModuleList(
             [Block(channels[i],channels[i+1])
@@ -69,7 +68,7 @@ spatial dimension 48 -> 96 -> 192
 channels: 32 -> 16 -> 3
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [64,32,16]):
+    def __init__(self,channels = [256,128,64,32]):
         super().__init__()
         self.channels = channels
         
@@ -112,7 +111,7 @@ class U_net(nn.Module):
     """
     def __init__(self,encChannels=[1,16,32,64],
                  decChannels = [64,32,16],
-                 nbClassses = 3,retainDim = True,
+                 nbClassses = 4,retainDim = True,
                  outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
         self.encoder = Encoder(encChannels)
