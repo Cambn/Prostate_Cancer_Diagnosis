@@ -19,10 +19,10 @@ def get_args():
     parser.add_argument('--mask_threshold','-t',type =float,default=0.5,
                         help='probability value to consider a mask pixel white')
     return parser.parse_args()
-BASE_OUTPUT = 'OUTPUT'
 
-MODEL_PATH = os.path.join(BASE_OUTPUT, "unet_alpha1.10.19.pth")
-PLOT_PATH = os.path.sep.join([BASE_OUTPUT, "plot_alpha1.10.19.png"])
+MODEL_FOLDER = 'OUTPUT/Model/'
+LOSS_FOLDER = 'OUTPUT/Loss Plot/'
+
 
 def plot_loss(H,path):
     plt.style.use("ggplot")
@@ -33,7 +33,7 @@ def plot_loss(H,path):
     plt.xlabel("Epoch #")
     plt.ylabel("Loss")
     plt.legend(loc="lower left")
-    plt.savefig(PLOT_PATH)
+    plt.savefig(path)
     plt.show()
 
 DATASET_MAIN_BRUNCH = 'DATASET/'
@@ -49,13 +49,6 @@ INPUT_IMAGE_HEIGHT = 256
 THRESHOLD = 0.5
 
 INIT_LR = 0.001
-NUM_EPOCHS = 40
+NUM_EPOCHS = 150
 BATCH_SIZE = 16
 
-NUM_CHANNELS = 3
-NUM_CLASSES = 3
-NUM_LEVELS = 3
-
-
-
-#TEST_PATHS = os.path.sep.join([BASE_OUTPUT, "test_paths.txt"])

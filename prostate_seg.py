@@ -3,11 +3,12 @@ import torch
 import numpy as np
 from torchvision.transforms import CenterCrop
 from torch.nn import functional as F
+import cv2
 import config
 
 '''
 t2-w image , dicom, (384,384)
-mask image , png, (384,384); label 1 and 2 in the mask indicates the pheripheral and transitional zones, respectively. Boundaries were enclosed by 255
+mask image , png, (384,384); label 1 and 2 in the mask indicates the pheripheral and transitional zones, respectively. Boundaries were enclosed by 255.
 '''
 
 '''
@@ -15,12 +16,14 @@ building block for the encoder and decoder
 stores two convolution, one batch normalization, and one leaky relu activation
 '''
 class Block(nn.Module):
-    def __init__(self, inChannels, outChannels):
+    def __init__(self, inChannels, outChannels,dropout = False):
         super().__init__()
         self.conv1 = nn.Conv2d(inChannels, outChannels,3,1,1)
         self.conv2 = nn.Conv2d(outChannels, outChannels,3,1,1)
         self.batchnorm = nn.BatchNorm2d(outChannels)
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
+        self.d = dropout
+        self.dropout = nn.Dropout(p=0.25)
 
     def forward(self,x):
         x = self.conv1(x)
@@ -29,6 +32,8 @@ class Block(nn.Module):
         x = self.conv2(x)
         x = self.batchnorm(x)
         x = self.relu(x)
+        if self.d:
+            x = self.dropout(x)
 
         return x
 
@@ -41,7 +46,7 @@ class Encoder(nn.Module):
     def __init__(self,channels= [1,32,64,128,256]):
         super().__init__()
         self.encBlocks = nn.ModuleList(
-            [Block(channels[i],channels[i+1])
+            [Block(channels[i],channels[i+1],True if i >= 2 else False)
                    for i in range(len(channels)-1)]
         )
         self.pool = nn.MaxPool2d(2)
@@ -77,7 +82,7 @@ class Decoder(nn.Module):
              for i in range(len(channels) - 1)]
         )
         self.dec_blocks = nn.ModuleList(
-            [Block(channels[i],channels[i+1])
+            [Block(channels[i],channels[i+1],True if i <= 1 else False)
                 for i in range(len(channels) - 1)]
         )
     def forward(self,x,encFeatures):
@@ -118,6 +123,7 @@ class U_net(nn.Module):
         self.decoder = Decoder(decChannels)
 
         self.head = nn.Conv2d(decChannels[-1],nbClassses,1)
+        #self.sigmoid = nn.Sigmoid()
         self.retainDim = retainDim
         self.OutSize = outSize
 
@@ -126,6 +132,7 @@ class U_net(nn.Module):
         decFeatures = self.decoder(encFeatures[::-1][0],
                                    encFeatures[::-1][1:])
         map = self.head(decFeatures)
+        #map = self.sigmoid(map)
 
         if self.retainDim:
             map = F.interpolate(map,self.OutSize)

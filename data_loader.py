@@ -38,10 +38,11 @@ class path_loader:
 
 
 class FetchImage(Dataset):
-    def __init__(self, imagePaths, maskPaths, transforms):
+    def __init__(self, imagePaths, maskPaths, transforms, hist = False):
         self.imagePaths = imagePaths
         self.maskPaths = maskPaths
         self.transforms = transforms
+        self.hist = hist
 
 
     def __len__(self):
@@ -62,33 +63,43 @@ class FetchImage(Dataset):
 
         # down scale the iamge to 256 * 256
         dim = (config.INPUT_IMAGE_WIDTH, config.INPUT_IMAGE_HEIGHT)
-        image_pre = self.preprocessor(arr = image_uint8,dim = dim, img = True)
+        image_pre = self.preprocessor(arr = image_uint8,dim = dim, hist = self.hist,img = True)
         mask_pre = self.preprocessor(arr = mask,dim = dim, mask = True)
 
         if self.transforms is not None:
             image_final = self.transforms(image_pre)
             mask_final = self.transforms(mask_pre)
-        # return a tuple of the image and its mask
-        return (image_final, image_final)
+            # return a tuple of the image and its mask
+            return (image_final, mask_final)
+        else: return (image_pre,mask_pre)
 
-    def preprocessor(self,arr,dim,mask = False,img = False):
+    def preprocessor(self,arr,dim,hist = False,mask = False,img = False):
         if img:
             if arr.shape[0] != config.INPUT_IMAGE_HEIGHT or arr.shape[1] != config.INPUT_IMAGE_WIDTH:
-                arr_resize = cv2.resize(arr, dim)
-            else: arr_resize = arr
+                arr_resize = cv2.resize(arr, dim,interpolation = cv2.INTER_NEAREST)
+                if hist:
+                    clahe = cv2.createCLAHE(clipLimit = 3)
+                    output_array = clahe.apply(arr_resize)
+                else: output_array = arr_resize
+            else:
+                if hist:
+                    clahe = cv2.createCLAHE(clipLimit = 3)
+                    output_array = clahe.apply(arr)
+                else: output_array = arr
         elif mask:
-            ## convert 255(boarders) to 0
-            idx = (arr == 255)
-            arr[idx] = 0
             idx2 = (arr == 3)
             arr[idx2] = 2
+            
             if arr.shape[0] != config.INPUT_IMAGE_HEIGHT or arr.shape[1] != config.INPUT_IMAGE_WIDTH:
-                arr_resize = cv2.resize(arr, dim)
-                ## make label 1/2/3 more apparent
-                ##arr_resize = arr_resize * 30
+                arr_resize = cv2.resize(arr, dim,interpolation = cv2.INTER_NEAREST)
             else: arr_resize = arr
+            output_array = np.zeros((config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH,4),dtype = 'uint8')
+            output_array[...,0] = (arr_resize==0).astype(int)
+            output_array[...,1] = (arr_resize==1).astype(int)
+            output_array[...,2] = (arr_resize==2).astype(int)
+            output_array[...,3] = (arr_resize==255).astype(int)
 
-        return arr_resize
+        return output_array
 
 '''
 384 * 384

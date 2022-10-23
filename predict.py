@@ -11,15 +11,14 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 import cv2
 import pydicom
-from pydicom.tag import Tag
-from torch.nn import MultiLabelMarginLoss,CrossEntropyLoss
+from torch.nn import BCEWithLogitsLoss,CrossEntropyLoss
 
 if __name__ == '__main__':
-    d = config.BASE_OUTPUT
-    model = '/unet_alpha1.10.19.pth'
-    unet = torch.load(d + model)
+    model_name = 'unet_10_22_v2.pth'
+    complete_model_path = config.MODEL_FOLDER + model_name
+    unet = torch.load(complete_model_path)
     unet = unet.to(config.DEVICE)
-    lossFunc = CrossEntropyLoss()
+    lossFunc = BCEWithLogitsLoss()
     unet.eval()
     '''
     get one of the images for testing
@@ -32,45 +31,34 @@ if __name__ == '__main__':
     t = transforms.Compose([transforms.ToPILImage(),
                             transforms.ToTensor()])
     _model_test = FetchImage(test_img, test_mask, t)
-    #img_1 = pydicom.dcmread(test).pixel_array
-    #img_uint8 = cv2.convertScaleAbs(img_1, alpha=(255.0 / 65535.0))
-
-
-    #
-    # #_input = t(img_uint8)
-    # #_input = _input.unsqueeze(1)
-    # # __input = torch.squeeze(_input,dim = 1)
-    # #__input = _input.to('cpu')
-    #
     img_Loader = DataLoader(_model_test, batch_size=1,
                             pin_memory=config.PIN_MEMORY)
 
     with torch.no_grad():
         for (x,y) in img_Loader:
-            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE).long())
-            y = torch.squeeze(y, dim=1)
+            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))
             pred = unet(x)
+
             #pred = torch.argmax(pred, dim=1)
-            print(lossFunc(pred,y))
-
-    m = nn.Softmax(dim=3)
-    pred_softmax = m(pred)
-    p = pred.detach().cpu().numpy()
-    p_softmax = pred_softmax.detach().cpu().numpy()
+            print(lossFunc(pred,y).flatten())
+    pred_mask = pred.cpu().numpy()
+    pred_mask = ((pred_mask> 0.004) * 255).astype(np.uint8)[0]
+    output_image = list(FetchImage(test_img,test_mask,None,hist = True))
+    prostate_img,gt = output_image[0][0],output_image[0][1]
     plt.figure(figsize=(15, 12))
-    plt.imshow(np.argmax(p_softmax, axis=1).reshape(256, 256) * 10)#, cmap='gray')
+    plt.imshow(prostate_img)
+    plt.title('Test Image')
+    fig, axs = plt.subplots(1, 4, figsize=(15, 6), facecolor='w', edgecolor='k')
+    axs = axs.ravel()
+    for i in range(4):
+        axs[i].imshow(gt[...,i])
+        axs[i].set_title('Group Truth Mask Region ' + str(i))
+
+    fig, axs = plt.subplots(1, 4, figsize=(15, 6), facecolor='w', edgecolor='k')
+    axs = axs.ravel()
+    pred_numpy = pred.clone().detach().cpu()[0]
+
+    for i in range(4):
+        axs[i].imshow(pred_mask[i,...])
+        axs[i].set_title('Predicted Mask Region ' + str(i))
     plt.show()
-
-
-
-
-    # _pred3 = (_pred3 > 0.1).astype(np.uint8)
-    # # plt.figure(figsize=(15, 12))
-    # # plt.imshow(img_1)
-    # # plt.show()
-
-    # _pred3 = _pred3 * 255
-    # # print(_pred3)
-    # plt.figure(figsize=(15, 12))
-    # plt.imshow(_pred3)
-    # plt.show()

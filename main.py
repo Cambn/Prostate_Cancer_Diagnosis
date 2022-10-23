@@ -5,7 +5,7 @@ import torch
 # import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss,BCEWithLogitsLoss, L1Loss
 import time
 from tqdm import tqdm
 from torchvision import transforms
@@ -30,16 +30,18 @@ if __name__ == '__main__':
     # of training batch: 2749
     '''
     train_paths_Images,test_paths_Images,train_paths_Masks,test_paths_Masks = split[0],split[1],split[2],split[3]
-    transforms = transforms.Compose([transforms.ToPILImage(),
+    t = transforms.Compose([transforms.ToPILImage(),
                                      transforms.ToTensor()])
-    _train = FetchImage(train_paths_Images,train_paths_Masks,transforms)
-    _test = FetchImage(test_paths_Images, test_paths_Masks, transforms)
+    _train = FetchImage(train_paths_Images,train_paths_Masks,t,hist = True)
+    _test = FetchImage(test_paths_Images, test_paths_Masks, t,hist = True)
     train_Loader = DataLoader(_train,shuffle = True, batch_size = config.BATCH_SIZE,
                               pin_memory = config.PIN_MEMORY,num_workers = 4)
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
                               pin_memory=config.PIN_MEMORY,num_workers = 4)
+
     unet = U_net().to(config.DEVICE)
-    lossFunc = CrossEntropyLoss()
+    BEC_Loss = BCEWithLogitsLoss(reduce = 'mean').to(DEVICE)
+    L1_Loss = L1Loss(reduce = 'mean').to(DEVICE)
     opt = Adam(unet.parameters(), lr=config.INIT_LR)
 
     trainSteps = len(train_paths_Images) // config.BATCH_SIZE
@@ -58,13 +60,9 @@ if __name__ == '__main__':
 
         for (i,(x,y)) in enumerate(train_Loader):
 
-            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE).long())
-            y = torch.squeeze(y,dim = 1)
-            #print(y.shape)
+            (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))#.long())
+
             pred = unet(x)
-            #print(r'pred before argmax: {}'.format(pred.shape))
-            #pred = torch.argmax(pred,dim = 1)
-            #print(r'pred after argmax: {}'.format(pred.shape))
             loss = lossFunc(pred,y)
 
             opt.zero_grad()
@@ -82,17 +80,14 @@ if __name__ == '__main__':
 
             ## loop over the validation set
             for (x,y) in test_Loader:
-                (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE).long())
-                y = torch.squeeze(y, dim=1)
+                (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))#.long())
                 pred = unet(x)
-                #pred = torch.argmax(pred, dim=1)
-                totalTestLoss += lossFunc(pred,y)
+                totalTestLoss += BEC_Loss(y,pred) + L1_Loss(y,pred) * 10
 
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
 
-        #print(avgTrainLoss)
-        #print(avgTestLoss)
+
         H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
         H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
         print()
@@ -102,29 +97,21 @@ if __name__ == '__main__':
     # display the total time needed to perform the training
     endTime = time.time()
     print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
-    config.plot_loss(H,config.PLOT_PATH)
-    torch.save(unet, config.MODEL_PATH)
+
+    if not os.path.isdir(config.LOSS_FOLDER):
+        os.makedirs(config.LOSS_FOLDER)
+    if not os.path.isdir(config.MODEL_FOLDER):
+        os.makedirs(config.MODEL_FOLDER)
+
+    model_name = 'unet_10_22_v3.pth'
+    loss_plot_name = 'unet_10_22_v3.png'
+    complete_model_path = config.MODEL_FOLDER + model_name
+    complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
+    config.plot_loss(H,complete_loss_plot_path)
+    torch.save(unet, complete_model_path)
 
 
 
-
-    #
-
-    #print(train_paths_Masks[0])
-    
-    # plt.imshow(pydicom.dcmread(train_paths_Images[0]).pixel_array,cmap = 'gray')
-    # plt.show()
-    # print(train_Loader)
-    # _m = 'DATASET/Prostatex-0006/mask/IM-0026-0012.png'
-    # mask = cv2.imread(_m)#, 0)
-    # print(mask[155])
-    # #mask = self.gray_2d(mask)
-    # # print()
-    # plt.imshow(mask)#pydicom.dcmread(test_paths_Masks[1]).pixel_array,cmap = 'gray')
-    # plt.show()
-    # print('Images {}'.format(len(imagePaths)))
-    # print('trainImages {}'.format(len(trainImages)))
-    # print('trainMasks {}'.format(len(trainMasks)))
 
     '''
     look through the pixels in the mask (0/1/2)
@@ -132,11 +119,3 @@ if __name__ == '__main__':
     try skipping? / size alignment
     pre-trained model (etc. resnet, heart from ct?)
     '''
-
-    # x = torch.randn(1,1,32,32)
-    # _e = Encoder()
-    # __e = _e(x)
-    # y = torch.randn(1, 32, 4, 4)
-    # _d = Decoder()
-    # _d(__e[::-1][0], __e[::-1][1:])
-    # print(torch.nn.Conv2d(16,3,1))
