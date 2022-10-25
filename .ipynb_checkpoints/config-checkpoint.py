@@ -20,9 +20,22 @@ def get_args():
                         help='probability value to consider a mask pixel white')
     return parser.parse_args()
 
-MODEL_FOLDER = 'OUTPUT/Model'
-LOSS_FOLDER = 'OUTPUT/Loss Plot'
+MODEL_FOLDER = 'OUTPUT/Model/'
+LOSS_FOLDER = 'OUTPUT/Loss Plot/'
 
+def plot_figure(x,pred,y):
+    x_numpy = x.cpu().numpy()
+    plt.imshow(x_numpy,cmap = 'gray')
+    
+    pred_numpy = pred.cpu().numpy()[0]
+    pred_mask = ((pred_numpy> 0.5) * 255).astype(np.uint8)
+    y_numpy = y.cpu().numpy()
+    fig,ax = plt.subplots(2,4, figsize=(15, 6), facecolor='w', edgecolor='k')
+    for i in range(4):
+        ax[0,i].imshow(y_numpy[i,...])
+        ax[0,i].set_title(f'Groud Truth Mask Channel {i}')
+        ax[1,i].imshow(pred_mask[i,...])
+        ax[0,i].set_title(f'Prediccted Mask Channel {i}')
 
 def plot_loss(H,path):
     plt.style.use("ggplot")
@@ -33,7 +46,7 @@ def plot_loss(H,path):
     plt.xlabel("Epoch #")
     plt.ylabel("Loss")
     plt.legend(loc="lower left")
-    plt.savefig(PLOT_PATH)
+    plt.savefig(path)
     plt.show()
 
 DATASET_MAIN_BRUNCH = 'DATASET/'
@@ -43,19 +56,12 @@ PIN_MEMORY = True if DEVICE == "cuda" else False
 # DEVICE = 'cpu'
 # PIN_MEMORY = False
 RAND_STATE = 42
-INPUT_IMAGE_WIDTH = 256
-INPUT_IMAGE_HEIGHT = 256
+INPUT_IMAGE_WIDTH = 320
+INPUT_IMAGE_HEIGHT = 320
 
 THRESHOLD = 0.5
 
 INIT_LR = 0.001
-NUM_EPOCHS = 40
+NUM_EPOCHS = 150
 BATCH_SIZE = 16
 
-NUM_CHANNELS = 3
-NUM_CLASSES = 3
-NUM_LEVELS = 3
-
-
-
-#TEST_PATHS = os.path.sep.join([BASE_OUTPUT, "test_paths.txt"])

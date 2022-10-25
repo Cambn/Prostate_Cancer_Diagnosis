@@ -23,6 +23,19 @@ def get_args():
 MODEL_FOLDER = 'OUTPUT/Model/'
 LOSS_FOLDER = 'OUTPUT/Loss Plot/'
 
+def plot_figure(x,pred,y):
+    x_numpy = x.cpu().numpy()
+    plt.imshow(x_numpy,cmap = 'gray')
+    
+    pred_numpy = pred.cpu().numpy()[0]
+    pred_mask = ((pred_numpy> 0.5) * 255).astype(np.uint8)
+    y_numpy = y.cpu().numpy()
+    fig,ax = plt.subplots(2,4, figsize=(15, 6), facecolor='w', edgecolor='k')
+    for i in range(4):
+        ax[0,i].imshow(y_numpy[i,...])
+        ax[0,i].set_title(f'Groud Truth Mask Channel {i}')
+        ax[1,i].imshow(pred_mask[i,...])
+        ax[0,i].set_title(f'Prediccted Mask Channel {i}')
 
 def plot_loss(H,path):
     plt.style.use("ggplot")
@@ -43,8 +56,8 @@ PIN_MEMORY = True if DEVICE == "cuda" else False
 # DEVICE = 'cpu'
 # PIN_MEMORY = False
 RAND_STATE = 42
-INPUT_IMAGE_WIDTH = 256
-INPUT_IMAGE_HEIGHT = 256
+INPUT_IMAGE_WIDTH = 320
+INPUT_IMAGE_HEIGHT = 320
 
 THRESHOLD = 0.5
 

@@ -14,7 +14,7 @@ import pydicom
 from torch.nn import BCEWithLogitsLoss,CrossEntropyLoss
 
 if __name__ == '__main__':
-    model_name = 'unet_10_22_v2.pth'
+    model_name = 'unet_10_22_v3.pth'
     complete_model_path = config.MODEL_FOLDER + model_name
     unet = torch.load(complete_model_path)
     unet = unet.to(config.DEVICE)
@@ -26,8 +26,8 @@ if __name__ == '__main__':
     img_uint8 -> img in the format of uintr8
     
     '''
-    test_img = ['DATASET/Prostatex-0026/t2_tse_tra/IM-0110-0008.dcm']
-    test_mask = ['DATASET/Prostatex-0026/mask/IM-0110-0008.png']
+    test_img = ['DATASET/Prostatex-0000/t2_tse_tra/IM-0002-0010.dcm']
+    test_mask = ['DATASET/Prostatex-0000/mask/IM-0002-0010.png']
     t = transforms.Compose([transforms.ToPILImage(),
                             transforms.ToTensor()])
     _model_test = FetchImage(test_img, test_mask, t)
@@ -42,7 +42,8 @@ if __name__ == '__main__':
             #pred = torch.argmax(pred, dim=1)
             print(lossFunc(pred,y).flatten())
     pred_mask = pred.cpu().numpy()
-    pred_mask = ((pred_mask> 0.004) * 255).astype(np.uint8)[0]
+
+    pred_mask = ((pred_mask> 0.5) * 255).astype(np.uint8)[0]
     output_image = list(FetchImage(test_img,test_mask,None,hist = True))
     prostate_img,gt = output_image[0][0],output_image[0][1]
     plt.figure(figsize=(15, 12))
