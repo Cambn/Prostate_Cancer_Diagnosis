@@ -1,7 +1,9 @@
 from torch.cuda import is_available
 import os
+import numpy as np
 import argparse
 import matplotlib.pyplot as plt
+from torch.nn import Sigmoid
 '''
 stores the choise of parameters
 as long as some static variables
@@ -24,18 +26,33 @@ MODEL_FOLDER = 'OUTPUT/Model/'
 LOSS_FOLDER = 'OUTPUT/Loss Plot/'
 
 def plot_figure(x,pred,y):
-    x_numpy = x.cpu().numpy()
+    x_numpy = x[0][0].cpu().numpy()
     plt.imshow(x_numpy,cmap = 'gray')
-    
-    pred_numpy = pred.cpu().numpy()[0]
-    pred_mask = ((pred_numpy> 0.5) * 255).astype(np.uint8)
-    y_numpy = y.cpu().numpy()
-    fig,ax = plt.subplots(2,4, figsize=(15, 6), facecolor='w', edgecolor='k')
-    for i in range(4):
-        ax[0,i].imshow(y_numpy[i,...])
-        ax[0,i].set_title(f'Groud Truth Mask Channel {i}')
-        ax[1,i].imshow(pred_mask[i,...])
-        ax[0,i].set_title(f'Prediccted Mask Channel {i}')
+    pred_sample = pred[0][0]
+    pred_numpy = pred_sample.cpu().detach().numpy()
+    pred_sigmoid = Sigmoid()(pred_sample).cpu().detach().numpy()
+    pred_sigmoid_th = ((pred_sigmoid> 0.5) * 255).astype(np.uint8)
+    y_numpy = y[0][0].cpu().detach().numpy()
+
+    fig,ax = plt.subplots(1,4, figsize=(15, 6), facecolor='w', edgecolor='k')
+    ax[0].imshow(y_numpy)
+    ax[0].set_title(f'Groud Truth Mask')
+    ax[1].imshow(pred_numpy)
+    ax[1].set_title(f'Output Mask')
+    ax[2].imshow(pred_numpy)
+    ax[2].set_title(f'Sigmoid Mask')
+    ax[3].imshow(pred_sigmoid_th)
+    ax[3].set_title(f'Sigmoid Mask with th 0.5')
+    # for i in range(4):
+    #     ax[0,i].imshow(y_numpy[i,...])
+    #     ax[0,i].set_title(f'Groud Truth Mask Channel {i}')
+    #     ax[1,i].imshow(pred_numpy[i,...])
+    #     ax[1,i].set_title(f'Output Mask Channel {i}')
+    #     ax[2,i].imshow(pred_numpy[i,...])
+    #     ax[2,i].set_title(f'Sigmoid Mask Channel {i}')
+    #     ax[3,i].imshow(pred_sigmoid_th[i,...])
+    #     ax[3,i].set_title(f'Sigmoid Mask with threshold Channel {i}')
+    plt.show()
 
 def plot_loss(H,path):
     plt.style.use("ggplot")
@@ -61,7 +78,8 @@ INPUT_IMAGE_HEIGHT = 320
 
 THRESHOLD = 0.5
 
-INIT_LR = 0.001
-NUM_EPOCHS = 150
-BATCH_SIZE = 16
+INIT_LR = 0.005
+WEIGHT_DECAY = 0.0001
+NUM_EPOCHS = 100
+BATCH_SIZE = 20
 

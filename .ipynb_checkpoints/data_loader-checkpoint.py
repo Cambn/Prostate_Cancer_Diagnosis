@@ -41,7 +41,7 @@ class path_loader:
                 self.mask_path.append(mask_dir)
 
 class dataset_preperation():
-    def __init__(self,im_path,mask_path,train_test_split,train = True):
+    def __init__(self,im_path,mask_path,train = True):
         self.img_dataset = []
         self.mask_dataset = []
         self.im_path = im_path
@@ -54,16 +54,30 @@ class dataset_preperation():
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             img = cv2.resize(img, dim,interpolation = cv2.INTER_NEAREST)
         img_normalized = cv2.normalize(img,None,0,255,cv2.NORM_MINMAX)
-        img_final = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
-        return img_normalized
+        img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
+        img_final = self.center_crop(img_filter,[256,256])
+        return img_final
 
     def mask_preparation(self,mask):
-        idx = (mask == 3)
-        mask[idx] = 2            
+        idx_1, idx_2,idx_3 = (mask == 3),(mask == 2),(mask == 255)
+        mask[idx_1] = 1
+        mask[idx_2] = 1
+        mask[idx_3] = 1
         if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             mask = cv2.resize(mask, dim,interpolation = cv2.INTER_NEAREST)
-        return mask
+        mask_final = self.center_crop(mask,[256,256])
+        return mask_final
+
+    def center_crop(self,img,dim):
+        width, height = img.shape[1], img.shape[0]
+        # process crop width and height for max available dimension
+        crop_width = dim[0] if dim[0] < img.shape[1] else img.shape[1]
+        crop_height = dim[1] if dim[1] < img.shape[0] else img.shape[0]
+        mid_x, mid_y = int(width / 2), int(height / 2)
+        cw2, ch2 = int(crop_width / 2), int(crop_height / 2)
+        crop_img = img[mid_y - ch2:mid_y + ch2, mid_x - cw2:mid_x + cw2]
+        return crop_img
 
     def image_transition(self,img,direction:str,pixel_val:int):
         if direction == 'left':
@@ -78,6 +92,7 @@ class dataset_preperation():
 
     def image_rotation(self,img,degree:int):
         return rotate(img,degree)
+
     def read_preprocess_dicom_mask(self,verbose = False):
         if verbose:
             if self.train: 
@@ -93,8 +108,7 @@ class dataset_preperation():
             mask_prepared = self.mask_preparation(mask)
             self.img_dataset.append(img_prepared)
             self.mask_dataset.append(mask_prepared)
-            if verbose and i == self.im_path[-1]:
-                print('Loading images and masks finished.')
+
             if self.train:
                 ## transition left and right by 5 pixels
                 num_shift = 5
@@ -104,14 +118,18 @@ class dataset_preperation():
                 self.mask_dataset.append(self.image_transition(mask_prepared,'right',num_shift))
                 ## rotation 90 and 270 degrees
                 d_1, d_2 = 90, 270
-                self.img_dataset.append(self.image_rotation(img,d_1))
-                self.img_dataset.append(self.image_rotation(img,d_2))
+                self.img_dataset.append(self.image_rotation(img_prepared,d_1))
+                #self.img_dataset.append(self.image_rotation(img_prepared,d_2))
                 self.mask_dataset.append(self.image_rotation(mask_prepared,d_1))
-                self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
-                if verbose and i == self.im_path[-1]:
-                    print('Loading augmented images and masks finished.')
-                    print(f'Augmentation: shift pics left and right by {num_shift} pixels. \nRotate pics by {d_1} and {d_2} degrees')
+                #self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
 
+        if verbose:
+            print('Loading images and masks finished.')
+            if self.train:
+                print('Loading augmented images and masks finished.')
+                print(f'Augmentation: shift pics left and right by {num_shift} pixels. \nRotate pics by {d_1} and {d_2} degrees')
+            print(f'Total amount of samples: {len(self.img_dataset)}')
+            print('...')
         return [self.img_dataset,self.mask_dataset]
     
 class FetchImage(Dataset):
@@ -137,13 +155,13 @@ class FetchImage(Dataset):
         image = self.image_dataset[idx]
         image = cv2.convertScaleAbs(image, alpha=255/image.max())
         mask = self.mask_dataset[idx]
-        mask = self.mask_dim_exp(mask)
+        #mask = self.mask_dim_exp(mask)
         if self.transformation is not None:
-            image_final = self.transformation(image)
-            image_final = transforms.Normalize(0,1)(image_final)
-            mask_final = self.transformation(mask)
+            image = self.transformation(image)
+            image = transforms.Normalize(0,1)(image)
+            mask = self.transformation(mask)
             # return a tuple of the image and its mask
-        return (image_final, mask_final)
+        return (image, mask)
 '''
 384 * 384
 

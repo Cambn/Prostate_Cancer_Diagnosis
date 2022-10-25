@@ -30,12 +30,16 @@ if __name__ == '__main__':
     # of training batch: 2749
     '''
     train_paths_Images,test_paths_Images,train_paths_Masks,test_paths_Masks = split[0],split[1],split[2],split[3]
+
     train = dataset_preperation(train_paths_Images, train_paths_Masks, True)
     train_dataset = train.read_preprocess_dicom_mask(True)
+
     test = dataset_preperation(test_paths_Images, test_paths_Masks, False)
     test_dataset = test.read_preprocess_dicom_mask(True)
+
     train_imgs, train_mask = train_dataset[0], train_dataset[1]
     test_imgs, test_mask = test_dataset[0], test_dataset[1]
+
     transformation = transforms.Compose([transforms.ToPILImage(),
                                          transforms.ToTensor()])
     _train = FetchImage(train_imgs, train_mask, transformation)
@@ -65,7 +69,6 @@ if __name__ == '__main__':
         totalTrainLoss, totalTestLoss = 0, 0
 
         for (i,(x,y)) in enumerate(train_Loader):
-
             (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))#.long())
 
             pred = unet(x)
@@ -77,8 +80,8 @@ if __name__ == '__main__':
             opt.step()
 
             totalTrainLoss += BEC_Loss(y,pred) + L1_Loss(y,pred) * 10
-        if (e + 1) % 51 == 0:
-            print(f'Running on epoch {e + 1}...')
+        if e % 20 == 0:
+            print(f'Running on epoch {e}...')
             config.plot_figure(x, pred, y)
         ## switch off autograd
         with torch.no_grad():
@@ -111,8 +114,8 @@ if __name__ == '__main__':
     if not os.path.isdir(config.MODEL_FOLDER):
         os.makedirs(config.MODEL_FOLDER)
 
-    model_name = 'unet_10_24_v4.pth'
-    loss_plot_name = 'unet_10_24_v4.png'
+    model_name = 'unet_10_24_v5.pth'
+    loss_plot_name = 'unet_10_24_v5.png'
     complete_model_path = config.MODEL_FOLDER + model_name
     complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
     config.plot_loss(H,complete_loss_plot_path)
