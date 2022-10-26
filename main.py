@@ -102,7 +102,7 @@ if __name__ == '__main__':
             totalTrainLoss += BEC_Loss(pred,y.float()) #BEC_Loss(pred,y.float()) + L1_Loss(pred,y.float()) * 10
         if e % 20 == 0:
             print(f'Running on epoch {e}...')
-            print(' Printing ...')
+            print(' Plotting Figures ...')
             config.plot_figure(x, pred, y, e, plot_folder,True)
         ## switch off autograd
         with torch.no_grad():
