@@ -9,12 +9,26 @@ from torch.nn import CrossEntropyLoss,BCEWithLogitsLoss, L1Loss
 import time
 from tqdm import tqdm
 from torchvision import transforms
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import config
 
 import logging
 
 if __name__ == '__main__':
+    VERSION = 'unet_10_25_v2'
+    model_name = VERSION + '.pth'
+    loss_plot_name = VERSION + '.png'
+    plot_folder = config.PLOT_FOLDER + VERSION + '/'
+    if not os.path.isdir(config.LOSS_FOLDER):
+        os.makedirs(config.LOSS_FOLDER)
+    if not os.path.isdir(config.MODEL_FOLDER):
+        os.makedirs(config.MODEL_FOLDER)
+    if not os.path.isdir(plot_folder):
+        os.makedirs(plot_folder)
+
+    complete_model_path = config.MODEL_FOLDER + model_name
+    complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
     loader = path_loader()
 
     loader.get_path(config.DATASET_MAIN_BRUNCH)
@@ -28,6 +42,7 @@ if __name__ == '__main__':
     '''
     total number of images for dicom and mask: 4104
     # of training batch: 2749
+    get images one per patient for training 
     '''
     train_paths_Images,test_paths_Images,train_paths_Masks,test_paths_Masks = split[0],split[1],split[2],split[3]
 
@@ -40,8 +55,7 @@ if __name__ == '__main__':
     train_imgs, train_mask = train_dataset[0], train_dataset[1]
     test_imgs, test_mask = test_dataset[0], test_dataset[1]
 
-    transformation = transforms.Compose([transforms.ToPILImage(),
-                                         transforms.ToTensor()])
+    transformation = True
     _train = FetchImage(train_imgs, train_mask, transformation)
     _test = FetchImage(test_imgs, test_mask, transformation)
     train_Loader = DataLoader(_train,shuffle = True, batch_size = config.BATCH_SIZE,
@@ -50,8 +64,9 @@ if __name__ == '__main__':
                               pin_memory=config.PIN_MEMORY,num_workers = 4)
 
     unet = U_net().to(config.DEVICE)
-    BEC_Loss = BCEWithLogitsLoss(reduce = 'mean').to(DEVICE)
+    BEC_Loss = BCEWithLogitsLoss().to(DEVICE)
     L1_Loss = L1Loss(reduce = 'mean').to(DEVICE)
+    loss_func = config.Binary_DiceLoss()
     opt = Adam(unet.parameters(), lr=config.INIT_LR)
 
     trainSteps = len(train_paths_Images) // config.BATCH_SIZE
@@ -62,9 +77,14 @@ if __name__ == '__main__':
     print('[INFO] training the network...')
     startTime = time.time()
 
+    # for e in range(config.NUM_EPOCHS):
+    #     for (i,(x,y)) in enumerate(train_Loader):
+    #         y_numpy = y[0][0].cpu().detach().numpy()
+    #         plt.imshow(y_numpy,cmap = 'gray')
+    #         plt.show()
     for e in tqdm(range(config.NUM_EPOCHS)):
         torch.cuda.empty_cache()
-        unet.train()
+        #unet.train()
 
         totalTrainLoss, totalTestLoss = 0, 0
 
@@ -72,17 +92,18 @@ if __name__ == '__main__':
             (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))#.long())
 
             pred = unet(x)
-            loss = BEC_Loss(y,pred) + L1_Loss(y,pred) * 10
+            loss = BEC_Loss(pred,y.float())#BEC_Loss(pred,y.float())# + L1_Loss(pred,y.float()) * 10
 
             opt.zero_grad()
             #loss.requires_grad = True
             loss.backward()
             opt.step()
 
-            totalTrainLoss += BEC_Loss(y,pred) + L1_Loss(y,pred) * 10
+            totalTrainLoss += BEC_Loss(pred,y.float()) #BEC_Loss(pred,y.float()) + L1_Loss(pred,y.float()) * 10
         if e % 20 == 0:
             print(f'Running on epoch {e}...')
-            config.plot_figure(x, pred, y)
+            print(' Printing ...')
+            config.plot_figure(x, pred, y, e, plot_folder,True)
         ## switch off autograd
         with torch.no_grad():
 
@@ -92,8 +113,10 @@ if __name__ == '__main__':
             ## loop over the validation set
             for (x,y) in test_Loader:
                 (x,y) = (x.to(config.DEVICE), y.to(config.DEVICE))#.long())
+
                 pred = unet(x)
-                totalTestLoss += BEC_Loss(y,pred) + L1_Loss(y,pred) * 10
+
+                totalTestLoss += BEC_Loss(pred,y.float())#BEC_Loss(pred,y.float())# + L1_Loss(pred,y.float()) * 10
 
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
@@ -109,15 +132,7 @@ if __name__ == '__main__':
     endTime = time.time()
     print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
 
-    if not os.path.isdir(config.LOSS_FOLDER):
-        os.makedirs(config.LOSS_FOLDER)
-    if not os.path.isdir(config.MODEL_FOLDER):
-        os.makedirs(config.MODEL_FOLDER)
 
-    model_name = 'unet_10_24_v5.pth'
-    loss_plot_name = 'unet_10_24_v5.png'
-    complete_model_path = config.MODEL_FOLDER + model_name
-    complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
     config.plot_loss(H,complete_loss_plot_path)
     torch.save(unet, complete_model_path)
 

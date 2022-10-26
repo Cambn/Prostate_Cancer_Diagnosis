@@ -4,6 +4,7 @@ import pydicom
 import os
 import bm3d
 import config
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
@@ -19,6 +20,7 @@ class path_loader:
         self.patient_name = []
         self.mask_path = []
         self.image_path = []
+        self.emp = 0
     def load_path(self,transform = None):
         return (self.image_path,self.mask_path)
     def get_path(self,main_brunch:str):
@@ -37,6 +39,19 @@ class path_loader:
                 idx = np.random.choice(np.arange(total_num))
                 image_dir = patient_image_folder + reg_image_list[idx]
                 mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
+                mask = cv2.imread(mask_dir,0)
+
+                '''
+                trying not to incorporate too much non-prostate images
+                filter condition: only up to 20 non-prostate images
+                '''
+                if len(np.unique(mask)) == 1:
+                    self.emp += 1
+                while self.emp >= 20 and len(np.unique(mask)) == 1:
+                    idx = np.random.choice(np.arange(total_num))
+                    image_dir = patient_image_folder + reg_image_list[idx]
+                    mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
+                    mask = cv2.imread(mask_dir,0)
                 self.image_path.append(image_dir)
                 self.mask_path.append(mask_dir)
 
@@ -49,7 +64,7 @@ class dataset_preperation():
         self.train = train
         
     def dicom_image_preparation(self,img):
-        img = img.astype(float)
+        img = img.astype(np.uint8)
         if img.shape[0] != config.INPUT_IMAGE_HEIGHT or img.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             img = cv2.resize(img, dim,interpolation = cv2.INTER_NEAREST)
@@ -59,14 +74,14 @@ class dataset_preperation():
         return img_final
 
     def mask_preparation(self,mask):
-        idx_1, idx_2,idx_3 = (mask == 3),(mask == 2),(mask == 255)
+        idx_1, idx_2,idx_3 = (mask == 2),(mask == 3),(mask == 255)
         mask[idx_1] = 1
         mask[idx_2] = 1
         mask[idx_3] = 1
         if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             mask = cv2.resize(mask, dim,interpolation = cv2.INTER_NEAREST)
-        mask_final = self.center_crop(mask,[256,256])
+        mask_final = self.center_crop(mask,[config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT])
         return mask_final
 
     def center_crop(self,img,dim):
@@ -152,14 +167,18 @@ class FetchImage(Dataset):
     
     def __getitem__(self, idx):
         # grab the imagefrom the current index
-        image = self.image_dataset[idx]
-        image = cv2.convertScaleAbs(image, alpha=255/image.max())
-        mask = self.mask_dataset[idx]
+        image = self.image_dataset[idx].astype(np.uint8)
+        #image = cv2.convertScaleAbs(image, alpha=255/image.max())
+        mask = self.mask_dataset[idx].reshape(1,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT)
         #mask = self.mask_dim_exp(mask)
-        if self.transformation is not None:
-            image = self.transformation(image)
-            image = transforms.Normalize(0,1)(image)
-            mask = self.transformation(mask)
+        if self.transformation:
+            to_PIL = transforms.ToPILImage()
+            to_tensor = transforms.ToTensor()
+            normalize = transforms.Normalize(0,1)
+            image = to_PIL(image)
+            image = to_tensor(image)
+            #image = normalize(image)
+            mask = torch.as_tensor(mask, dtype=torch.int64)
             # return a tuple of the image and its mask
         return (image, mask)
 '''

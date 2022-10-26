@@ -21,7 +21,7 @@ class Block(nn.Module):
         self.conv1 = nn.Conv2d(inChannels, outChannels,3,1,1)
         self.conv2 = nn.Conv2d(outChannels, outChannels,3,1,1)
         self.batchnorm = nn.BatchNorm2d(outChannels)
-        self.relu = nn.LeakyReLU()
+        self.relu = nn.ReLU()
         self.d = dropout
         self.dropout = nn.Dropout(p=0.25)
 
@@ -38,9 +38,9 @@ class Block(nn.Module):
         return x
 
 '''
-input shape: 256 -> 128 -> 64 -> 32
+input shape: 256 -> 128 -> 64 -> 32 -> 16
 
-# num of channel: 1 -> 32 -> 64 -> 128 -> 256
+# num of channel: 1 -> 32 -> 64 -> 128 -> 256 -> 512
 '''
 class Encoder(nn.Module):
     def __init__(self,channels= [1,32,64,128,256,512]):
@@ -60,8 +60,8 @@ class Encoder(nn.Module):
         return blocks
 
 '''
-spatial dimension 48 -> 96 -> 192
-channels: 32 -> 16 -> 3
+spatial dimension 16 - > 32 -> 64 -> 128 -> 256
+channels: 512 -> 256 -> 128 -> 64 -> 32
 '''
 class Decoder(nn.Module):
     def __init__(self,channels = [512,256,128,64,32]):

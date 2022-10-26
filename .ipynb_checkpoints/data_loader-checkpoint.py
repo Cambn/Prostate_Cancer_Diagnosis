@@ -19,6 +19,7 @@ class path_loader:
         self.patient_name = []
         self.mask_path = []
         self.image_path = []
+        self.emp = 0
     def load_path(self,transform = None):
         return (self.image_path,self.mask_path)
     def get_path(self,main_brunch:str):
@@ -37,6 +38,15 @@ class path_loader:
                 idx = np.random.choice(np.arange(total_num))
                 image_dir = patient_image_folder + reg_image_list[idx]
                 mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
+                mask = cv2.imread(mask_dir,0)
+                
+                if len(np.unique(mask)) == 1:
+                    self.emp += 1
+                while self.emp >= 20 and len(np.unique(mask)) == 1:
+                    idx = np.random.choice(np.arange(total_num))
+                    image_dir = patient_image_folder + reg_image_list[idx]
+                    mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
+                    mask = cv2.imread(mask_dir,0)
                 self.image_path.append(image_dir)
                 self.mask_path.append(mask_dir)
 
@@ -49,7 +59,7 @@ class dataset_preperation():
         self.train = train
         
     def dicom_image_preparation(self,img):
-        img = img.astype(float)
+        img = img.astype(np.uint8)
         if img.shape[0] != config.INPUT_IMAGE_HEIGHT or img.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             img = cv2.resize(img, dim,interpolation = cv2.INTER_NEAREST)
@@ -152,8 +162,8 @@ class FetchImage(Dataset):
     
     def __getitem__(self, idx):
         # grab the imagefrom the current index
-        image = self.image_dataset[idx]
-        image = cv2.convertScaleAbs(image, alpha=255/image.max())
+        image = self.image_dataset[idx].astype(np.uint8)
+        #image = cv2.convertScaleAbs(image, alpha=255/image.max())
         mask = self.mask_dataset[idx]
         #mask = self.mask_dim_exp(mask)
         if self.transformation is not None:
