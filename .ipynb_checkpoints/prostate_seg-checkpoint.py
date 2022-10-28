@@ -38,15 +38,15 @@ class Block(nn.Module):
         return x
 
 '''
-input shape: 256 -> 128 -> 64 -> 32 -> 16
+input shape:    256 -> 128 ->  64 -> 32 -> 16 -> 8    -> 4  -> 2
 
-# num of channel: 1 -> 32 -> 64 -> 128 -> 256 -> 512
+# num of channel: 1 -> 16  ->  32 -> 64 -> 128 -> 256 -> 512 -> 1024
 '''
 class Encoder(nn.Module):
-    def __init__(self,channels= [1,32,64,128,256,512]):
+    def __init__(self,channels= [1,16,32,64,128,256,512,1024]):
         super().__init__()
         self.encBlocks = nn.ModuleList(
-            [Block(channels[i],channels[i+1],True)
+            [Block(channels[i],channels[i+1],True if i >= 3 else False)
                    for i in range(len(channels)-1)]
         )
         self.pool = nn.MaxPool2d(2)
@@ -60,11 +60,11 @@ class Encoder(nn.Module):
         return blocks
 
 '''
-spatial dimension 16 - > 32 -> 64 -> 128 -> 256
-channels: 512 -> 256 -> 128 -> 64 -> 32
+spatial dimension 2 -> 4   -> 8   -> 16  -> 32 -> 64 -> 128
+channels:      1024 -> 512 -> 256 -> 128 -> 64 -> 32 -> 16
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [512,256,128,64,32]):
+    def __init__(self,channels = [1024,512,256,128,64,32,16]):
         super().__init__()
         self.channels = channels
         
@@ -73,7 +73,7 @@ class Decoder(nn.Module):
              for i in range(len(channels) - 1)]
         )
         self.dec_blocks = nn.ModuleList(
-            [Block(channels[i],channels[i+1],True)
+            [Block(channels[i],channels[i+1],True if i<=2 else False)
                 for i in range(len(channels) - 1)]
         )
     def forward(self,x,encFeatures):
@@ -97,16 +97,20 @@ class U_net(nn.Module):
     """
     implements u_net architecture
     """
-    def __init__(self,encChannels=[1,16,32,64],
-                 decChannels = [64,32,16],
-                 nbClassses = 1,retainDim = False,
+    def __init__(self,encChannels=[1,16,32,64,128,256],
+                 decChannels = [256,128,64,32,16],
+                 binary = True,
+                 retainDim = False,
                  outSize= (config.INPUT_IMAGE_HEIGHT,config.INPUT_IMAGE_WIDTH)):
         super().__init__()
         self.encoder = Encoder(encChannels)
         self.decoder = Decoder(decChannels)
-
+        if binary:
+            nbClassses = 1
+        else:
+            nbClassses = 3
         self.head = nn.Conv2d(decChannels[-1],nbClassses,1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
         self.retainDim = retainDim
         self.OutSize = outSize
 

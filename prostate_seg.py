@@ -1,9 +1,7 @@
 import torch.nn as nn
 import torch
-import numpy as np
 from torchvision.transforms import CenterCrop
 from torch.nn import functional as F
-import cv2
 import config
 
 '''
@@ -43,7 +41,7 @@ input shape:    256 -> 128 ->  64 -> 32 -> 16 -> 8    -> 4  -> 2
 # num of channel: 1 -> 16  ->  32 -> 64 -> 128 -> 256 -> 512 -> 1024
 '''
 class Encoder(nn.Module):
-    def __init__(self,channels= [1,16,32,64,128,256,512,1024]):
+    def __init__(self,channels):
         super().__init__()
         self.encBlocks = nn.ModuleList(
             [Block(channels[i],channels[i+1],True if i >= 3 else False)
@@ -64,7 +62,7 @@ spatial dimension 2 -> 4   -> 8   -> 16  -> 32 -> 64 -> 128
 channels:      1024 -> 512 -> 256 -> 128 -> 64 -> 32 -> 16
 '''
 class Decoder(nn.Module):
-    def __init__(self,channels = [1024,512,256,128,64,32,16]):
+    def __init__(self,channels):
         super().__init__()
         self.channels = channels
         
@@ -110,7 +108,7 @@ class U_net(nn.Module):
         else:
             nbClassses = 3
         self.head = nn.Conv2d(decChannels[-1],nbClassses,1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
         self.retainDim = retainDim
         self.OutSize = outSize
 

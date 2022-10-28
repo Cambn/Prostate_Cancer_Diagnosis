@@ -12,7 +12,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import config
-
+import utils
 import logging
 
 if __name__ == '__main__':
@@ -60,12 +60,15 @@ if __name__ == '__main__':
                               pin_memory = config.PIN_MEMORY,num_workers = 4)
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
                               pin_memory=config.PIN_MEMORY,num_workers = 4)
+    encChannels = [1, 16, 32, 64, 128]
+    decChannels = [128, 64, 32, 16]
+    unet = U_net(encChannels = encChannels,
+                 decChannels = decChannels, binary= binary).to(config.DEVICE)
 
-    unet = U_net(binary = binary).to(config.DEVICE)
     BEC_Loss = BCEWithLogitsLoss().to(DEVICE)
-    L1_Loss = L1Loss(reduce = 'mean').to(DEVICE)
-    loss_func = config.Binary_DiceLoss()
-    opt = Adam(unet.parameters(), lr=config.INIT_LR)
+    # L1_Loss = L1Loss(reduce = 'mean').to(DEVICE)
+    # loss_func = config.Binary_DiceLoss()
+    opt = Adam(unet.parameters(), lr=config.INIT_LR,weight_decay = config.WEIGHT_DECAY)
 
     trainSteps = len(train_paths_Images) // config.BATCH_SIZE
     testSteps = len(test_paths_Images) // config.BATCH_SIZE
@@ -101,7 +104,7 @@ if __name__ == '__main__':
         if (e+1) % 20 == 0:
             print(f'Running on epoch {e+1}...')
             print(' Plotting Figures for training ...')
-            config.plot_figure(x, pred, y, e+1, plot_folder_train,True)
+            utils.plot_figure(x, pred, y, e+1, plot_folder_train,True)
         ## switch off autograd
         with torch.no_grad():
 
@@ -117,7 +120,7 @@ if __name__ == '__main__':
                 totalTestLoss += BEC_Loss(pred,y.float())#BEC_Loss(pred,y.float())# + L1_Loss(pred,y.float()) * 10
             if (e + 1) % 20 == 0:
                 print(' Plotting Figures for testing ...')
-                config.plot_figure(x, pred, y, e + 1, plot_folder_test, True)
+                utils.plot_figure(x, pred, y, e + 1, plot_folder_test, True)
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
 
@@ -133,7 +136,7 @@ if __name__ == '__main__':
     print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))
 
 
-    config.plot_loss(H,complete_loss_plot_path)
+    utils.plot_loss(H,complete_loss_plot_path)
     torch.save(unet, complete_model_path)
 
 
