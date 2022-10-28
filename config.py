@@ -24,11 +24,11 @@ CROP_IMAGE_WIDTH = 256
 CROP_IMAGE_HEIGHT = 256
 
 THRESHOLD = 0.5
-
+VERSION = 'unet_10_27_v1'
 INIT_LR = 0.002
 WEIGHT_DECAY = 0.0001
-NUM_EPOCHS = 160
-BATCH_SIZE = 22
+NUM_EPOCHS = 140
+BATCH_SIZE = 16
 
 MODEL_FOLDER = 'OUTPUT/Model/'
 LOSS_FOLDER = 'OUTPUT/Loss Plot/'
@@ -49,6 +49,8 @@ def get_args():
 
 
 def plot_figure(x,pred,y,epoch,path,train = True):
+    if not os.path.isdir(path):
+        os.makedirs(path)
     N = x.size()[0]
     fig,ax = plt.subplots(N,5,figsize=(50, 25))
     fig.tight_layout()
@@ -90,6 +92,7 @@ def plot_figure(x,pred,y,epoch,path,train = True):
 
 
 def plot_loss(H,path):
+
     plt.style.use("ggplot")
     plt.figure()
     plt.plot(H["train_loss"], label="train_loss")

@@ -16,21 +16,19 @@ import config
 import logging
 
 if __name__ == '__main__':
-    VERSION = 'unet_10_25_v2'
-    model_name = VERSION + '.pth'
-    loss_plot_name = VERSION + '.png'
-    plot_folder = config.PLOT_FOLDER + VERSION + '/'
-    if not os.path.isdir(config.LOSS_FOLDER):
-        os.makedirs(config.LOSS_FOLDER)
+
+    model_name = config.VERSION + '.pth'
+    loss_plot_name = config.VERSION + '.png'
+    plot_folder_train = config.PLOT_FOLDER + config.VERSION + '/train/'
+    plot_folder_test = config.PLOT_FOLDER + config.VERSION + '/test/'
     if not os.path.isdir(config.MODEL_FOLDER):
         os.makedirs(config.MODEL_FOLDER)
-    if not os.path.isdir(plot_folder):
-        os.makedirs(plot_folder)
-
+    if not os.path.isdir(config.LOSS_FOLDER):
+        os.makedirs(config.LOSS_FOLDER)
     complete_model_path = config.MODEL_FOLDER + model_name
     complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
     loader = path_loader()
-
+    binary = True
     loader.get_path(config.DATASET_MAIN_BRUNCH)
     (im_path, mask_path) = loader.load_path()
 
@@ -47,23 +45,23 @@ if __name__ == '__main__':
     train_paths_Images,test_paths_Images,train_paths_Masks,test_paths_Masks = split[0],split[1],split[2],split[3]
 
     train = dataset_preperation(train_paths_Images, train_paths_Masks, True)
-    train_dataset = train.read_preprocess_dicom_mask(True)
+    train_dataset = train.read_preprocess_dicom_mask('both', binary, True)
 
     test = dataset_preperation(test_paths_Images, test_paths_Masks, False)
-    test_dataset = test.read_preprocess_dicom_mask(True)
+    test_dataset = test.read_preprocess_dicom_mask('both', binary, True)
 
     train_imgs, train_mask = train_dataset[0], train_dataset[1]
     test_imgs, test_mask = test_dataset[0], test_dataset[1]
 
     transformation = True
-    _train = FetchImage(train_imgs, train_mask, transformation)
-    _test = FetchImage(test_imgs, test_mask, transformation)
+    _train = FetchImage(train_imgs, train_mask, transformation, binary)
+    _test = FetchImage(test_imgs, test_mask, transformation, binary)
     train_Loader = DataLoader(_train,shuffle = True, batch_size = config.BATCH_SIZE,
                               pin_memory = config.PIN_MEMORY,num_workers = 4)
     test_Loader = DataLoader(_test, shuffle=True, batch_size=config.BATCH_SIZE,
                               pin_memory=config.PIN_MEMORY,num_workers = 4)
 
-    unet = U_net().to(config.DEVICE)
+    unet = U_net(binary = binary).to(config.DEVICE)
     BEC_Loss = BCEWithLogitsLoss().to(DEVICE)
     L1_Loss = L1Loss(reduce = 'mean').to(DEVICE)
     loss_func = config.Binary_DiceLoss()
@@ -100,10 +98,10 @@ if __name__ == '__main__':
             opt.step()
 
             totalTrainLoss += BEC_Loss(pred,y.float()) #BEC_Loss(pred,y.float()) + L1_Loss(pred,y.float()) * 10
-        if e % 20 == 0:
-            print(f'Running on epoch {e}...')
-            print(' Plotting Figures ...')
-            config.plot_figure(x, pred, y, e, plot_folder,True)
+        if (e+1) % 20 == 0:
+            print(f'Running on epoch {e+1}...')
+            print(' Plotting Figures for training ...')
+            config.plot_figure(x, pred, y, e+1, plot_folder_train,True)
         ## switch off autograd
         with torch.no_grad():
 
@@ -117,7 +115,9 @@ if __name__ == '__main__':
                 pred = unet(x)
 
                 totalTestLoss += BEC_Loss(pred,y.float())#BEC_Loss(pred,y.float())# + L1_Loss(pred,y.float()) * 10
-
+            if (e + 1) % 20 == 0:
+                print(' Plotting Figures for testing ...')
+                config.plot_figure(x, pred, y, e + 1, plot_folder_test, True)
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
 

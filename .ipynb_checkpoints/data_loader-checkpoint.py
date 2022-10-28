@@ -4,6 +4,7 @@ import pydicom
 import os
 import bm3d
 import config
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
@@ -39,7 +40,11 @@ class path_loader:
                 image_dir = patient_image_folder + reg_image_list[idx]
                 mask_dir = mask_image_folder + reg_image_list[idx][:-4]+ '.png'
                 mask = cv2.imread(mask_dir,0)
-                
+
+                '''
+                trying not to incorporate too much non-prostate images
+                filter condition: only up to 20 non-prostate images
+                '''
                 if len(np.unique(mask)) == 1:
                     self.emp += 1
                 while self.emp >= 20 and len(np.unique(mask)) == 1:
@@ -58,25 +63,32 @@ class dataset_preperation():
         self.mask_path = mask_path
         self.train = train
         
-    def dicom_image_preparation(self,img):
-        img = img.astype(np.uint8)
+    def dicom_image_preparation(self,img,method):
         if img.shape[0] != config.INPUT_IMAGE_HEIGHT or img.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             img = cv2.resize(img, dim,interpolation = cv2.INTER_NEAREST)
-        img_normalized = cv2.normalize(img,None,0,255,cv2.NORM_MINMAX)
-        img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
-        img_final = self.center_crop(img_filter,[256,256])
+        img_normalized = cv2.normalize(img,None,0,255,cv2.NORM_MINMAX).astype(np.uint8)
+        if method == 'bm3d':
+            img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
+        elif method == 'clahe':
+            clahe = cv2.createCLAHE(clipLimit=4)
+            img_filter = clahe.apply(img_normalized)
+        elif method == 'both':
+            clahe = cv2.createCLAHE(clipLimit=4)
+            img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING).astype(np.uint8)
+            img_filter = clahe.apply(img_filter)
+        img_final = self.center_crop(img_filter,[256,256])    
         return img_final
 
     def mask_preparation(self,mask):
-        idx_1, idx_2,idx_3 = (mask == 3),(mask == 2),(mask == 255)
+        idx_1, idx_2,idx_3 = (mask == 2),(mask == 3),(mask == 255)
         mask[idx_1] = 1
         mask[idx_2] = 1
         mask[idx_3] = 1
         if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             mask = cv2.resize(mask, dim,interpolation = cv2.INTER_NEAREST)
-        mask_final = self.center_crop(mask,[256,256])
+        mask_final = self.center_crop(mask,[config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT])
         return mask_final
 
     def center_crop(self,img,dim):
@@ -103,7 +115,7 @@ class dataset_preperation():
     def image_rotation(self,img,degree:int):
         return rotate(img,degree)
 
-    def read_preprocess_dicom_mask(self,verbose = False):
+    def read_preprocess_dicom_mask(self,method,verbose = False):
         if verbose:
             if self.train: 
                 print('Loading and Processing datasets for Training...')
@@ -113,7 +125,7 @@ class dataset_preperation():
                 print('...')
         for i,m in tqdm(zip(self.im_path,self.mask_path)):
             img = pydicom.dcmread(i).pixel_array
-            img_prepared = self.dicom_image_preparation(img)
+            img_prepared = self.dicom_image_preparation(img,method)
             mask = cv2.imread(m,0)
             mask_prepared = self.mask_preparation(mask)
             self.img_dataset.append(img_prepared)
@@ -129,9 +141,9 @@ class dataset_preperation():
                 ## rotation 90 and 270 degrees
                 d_1, d_2 = 90, 270
                 self.img_dataset.append(self.image_rotation(img_prepared,d_1))
-                #self.img_dataset.append(self.image_rotation(img_prepared,d_2))
+                self.img_dataset.append(self.image_rotation(img_prepared,d_2))
                 self.mask_dataset.append(self.image_rotation(mask_prepared,d_1))
-                #self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
+                self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
 
         if verbose:
             print('Loading images and masks finished.')
@@ -164,12 +176,16 @@ class FetchImage(Dataset):
         # grab the imagefrom the current index
         image = self.image_dataset[idx].astype(np.uint8)
         #image = cv2.convertScaleAbs(image, alpha=255/image.max())
-        mask = self.mask_dataset[idx]
+        mask = self.mask_dataset[idx].reshape(1,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT)
         #mask = self.mask_dim_exp(mask)
-        if self.transformation is not None:
-            image = self.transformation(image)
-            image = transforms.Normalize(0,1)(image)
-            mask = self.transformation(mask)
+        if self.transformation:
+            to_PIL = transforms.ToPILImage()
+            to_tensor = transforms.ToTensor()
+            normalize = transforms.Normalize(0,1)
+            image = to_PIL(image)
+            image = to_tensor(image)
+            #image = normalize(image)
+            mask = torch.as_tensor(mask, dtype=torch.int64)
             # return a tuple of the image and its mask
         return (image, mask)
 '''

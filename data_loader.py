@@ -63,21 +63,34 @@ class dataset_preperation():
         self.mask_path = mask_path
         self.train = train
         
-    def dicom_image_preparation(self,img):
-        img = img.astype(np.uint8)
+    def dicom_image_preparation(self,img,method):
         if img.shape[0] != config.INPUT_IMAGE_HEIGHT or img.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             img = cv2.resize(img, dim,interpolation = cv2.INTER_NEAREST)
-        img_normalized = cv2.normalize(img,None,0,255,cv2.NORM_MINMAX)
-        img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
-        img_final = self.center_crop(img_filter,[256,256])
+        img_normalized = cv2.normalize(img,None,0,255,cv2.NORM_MINMAX).astype(np.uint8)
+        if method == 'bm3d':
+            img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING).astype(np.uint8)
+        elif method == 'clahe':
+            clahe = cv2.createCLAHE(clipLimit=4)
+            img_filter = clahe.apply(img_normalized)
+        elif method == 'both':
+            clahe = cv2.createCLAHE(clipLimit=4)
+            img_filter = bm3d.bm3d(img_normalized, sigma_psd=30/255, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING).astype(np.uint8)
+            img_filter = clahe.apply(img_filter)
+        img_final = self.center_crop(img_filter,[256,256])    
         return img_final
 
-    def mask_preparation(self,mask):
-        idx_1, idx_2,idx_3 = (mask == 2),(mask == 3),(mask == 255)
-        mask[idx_1] = 1
-        mask[idx_2] = 1
-        mask[idx_3] = 1
+    def mask_preparation(self,mask, binary):
+        if binary:
+            idx_1, idx_2,idx_3 = (mask == 2),(mask == 3),(mask == 255)
+            mask[idx_1] = 1
+            mask[idx_2] = 1
+            mask[idx_3] = 1
+        else:
+            idx_1, idx_2 = (mask == 3),(mask == 255)
+            mask[idx_1] = 2
+            mask[idx_2] = 0
+
         if mask.shape[0] != config.INPUT_IMAGE_HEIGHT or mask.shape[1] != config.INPUT_IMAGE_WIDTH:
             dim = (config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)
             mask = cv2.resize(mask, dim,interpolation = cv2.INTER_NEAREST)
@@ -108,7 +121,7 @@ class dataset_preperation():
     def image_rotation(self,img,degree:int):
         return rotate(img,degree)
 
-    def read_preprocess_dicom_mask(self,verbose = False):
+    def read_preprocess_dicom_mask(self,method,binary,verbose = False):
         if verbose:
             if self.train: 
                 print('Loading and Processing datasets for Training...')
@@ -118,9 +131,9 @@ class dataset_preperation():
                 print('...')
         for i,m in tqdm(zip(self.im_path,self.mask_path)):
             img = pydicom.dcmread(i).pixel_array
-            img_prepared = self.dicom_image_preparation(img)
+            img_prepared = self.dicom_image_preparation(img,method)
             mask = cv2.imread(m,0)
-            mask_prepared = self.mask_preparation(mask)
+            mask_prepared = self.mask_preparation(mask,binary)
             self.img_dataset.append(img_prepared)
             self.mask_dataset.append(mask_prepared)
 
@@ -134,9 +147,9 @@ class dataset_preperation():
                 ## rotation 90 and 270 degrees
                 d_1, d_2 = 90, 270
                 self.img_dataset.append(self.image_rotation(img_prepared,d_1))
-                #self.img_dataset.append(self.image_rotation(img_prepared,d_2))
+                self.img_dataset.append(self.image_rotation(img_prepared,d_2))
                 self.mask_dataset.append(self.image_rotation(mask_prepared,d_1))
-                #self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
+                self.mask_dataset.append(self.image_rotation(mask_prepared,d_2))
 
         if verbose:
             print('Loading images and masks finished.')
@@ -148,21 +161,21 @@ class dataset_preperation():
         return [self.img_dataset,self.mask_dataset]
     
 class FetchImage(Dataset):
-    def __init__(self, image_dataset, mask_dataset, transformation):
+    def __init__(self, image_dataset, mask_dataset, transformation, binary = True):
         self.image_dataset = image_dataset
         self.mask_dataset = mask_dataset
         self.transformation = transformation
+        self.binary = binary
 
     def __len__(self):
         # return the number of total samples contained in the dataset
         return len(self.image_dataset)
     
     def mask_dim_exp(self,mask):
-        output_mask = np.zeros((mask.shape[0],mask.shape[1],4),dtype = 'uint8')
+        output_mask = np.zeros((mask.shape[0],mask.shape[1],3),dtype = 'uint8')
         output_mask[...,0] = (mask==0).astype(int)
         output_mask[...,1] = (mask==1).astype(int)
         output_mask[...,2] = (mask==2).astype(int)
-        output_mask[...,3] = (mask==255).astype(int)
         return output_mask
     
     def __getitem__(self, idx):
@@ -170,7 +183,8 @@ class FetchImage(Dataset):
         image = self.image_dataset[idx].astype(np.uint8)
         #image = cv2.convertScaleAbs(image, alpha=255/image.max())
         mask = self.mask_dataset[idx].reshape(1,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT)
-        #mask = self.mask_dim_exp(mask)
+        if not self.binary:
+            mask = self.mask_dim_exp(mask)
         if self.transformation:
             to_PIL = transforms.ToPILImage()
             to_tensor = transforms.ToTensor()
