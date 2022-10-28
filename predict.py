@@ -1,16 +1,10 @@
-import config
-
 from data_loader import *
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
-from config import *
-from torchvision import transforms
-import matplotlib.pyplot as plt
-import cv2
-import pydicom
+import config
+import utils
 from torch.nn import BCEWithLogitsLoss,CrossEntropyLoss
 
 if __name__ == '__main__':
@@ -54,4 +48,4 @@ if __name__ == '__main__':
             pred = unet(x)
 
             print(lossFunc(pred,y.float()))
-            config.plot_figure(x,pred,y,0,plot_folder_predict, False)
+            utils.plot_figure(x,pred,y,0,plot_folder_predict, False)

@@ -2,14 +2,11 @@ import os
 from data_loader import *
 from prostate_seg import *
 import torch
-# import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.nn import CrossEntropyLoss,BCEWithLogitsLoss, L1Loss
 import time
 from tqdm import tqdm
-from torchvision import transforms
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import config
 import utils
