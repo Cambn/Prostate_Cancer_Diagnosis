@@ -7,8 +7,7 @@ DATASET_MAIN_BRUNCH = 'DATASET/'
 TEST_SPLIT = 0.33
 DEVICE = 'cuda' if is_available else 'cpu'
 PIN_MEMORY = True if DEVICE == "cuda" else False
-# DEVICE = 'cpu'
-# PIN_MEMORY = False
+
 RAND_STATE = 42
 INPUT_IMAGE_WIDTH = 320
 INPUT_IMAGE_HEIGHT = 320
