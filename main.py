@@ -25,7 +25,7 @@ if __name__ == '__main__':
     complete_model_path = config.MODEL_FOLDER + model_name
     complete_loss_plot_path = config.LOSS_FOLDER + loss_plot_name
     loader = path_loader()
-    binary = True
+    binary = False
     loader.get_path(config.DATASET_MAIN_BRUNCH)
     (im_path, mask_path) = loader.load_path()
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         if (e+1) % 20 == 0:
             print(f'Running on epoch {e+1}...')
             print(' Plotting Figures for training ...')
-            utils.plot_figure(x, pred, y, e+1, plot_folder_train,True)
+            utils.plot_figure(x, pred, y, e+1, plot_folder_train,binary,True)
         ## switch off autograd
         with torch.no_grad():
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
                 totalTestLoss += BEC_Loss(pred,y.float())#BEC_Loss(pred,y.float())# + L1_Loss(pred,y.float()) * 10
             if (e + 1) % 20 == 0:
                 print(' Plotting Figures for testing ...')
-                utils.plot_figure(x, pred, y, e + 1, plot_folder_test, True)
+                utils.plot_figure(x, pred, y, e + 1, plot_folder_test,binary, True)
         avgTrainLoss = totalTrainLoss / trainSteps
         avgTestLoss = totalTestLoss / testSteps
 

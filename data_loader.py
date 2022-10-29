@@ -171,18 +171,20 @@ class FetchImage(Dataset):
         return len(self.image_dataset)
     
     def mask_dim_exp(self,mask):
-        output_mask = np.zeros((mask.shape[0],mask.shape[1],3),dtype = 'uint8')
-        output_mask[...,0] = (mask==0).astype(int)
-        output_mask[...,1] = (mask==1).astype(int)
-        output_mask[...,2] = (mask==2).astype(int)
+        output_mask = np.zeros((3,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_WIDTH),dtype = 'uint8')
+        output_mask[0, ...] = (mask==0).astype(int)
+        output_mask[1, ...] = (mask==1).astype(int)
+        output_mask[2, ...] = (mask==2).astype(int)
         return output_mask
     
     def __getitem__(self, idx):
         # grab the imagefrom the current index
         image = self.image_dataset[idx].astype(np.uint8)
         #image = cv2.convertScaleAbs(image, alpha=255/image.max())
-        mask = self.mask_dataset[idx].reshape(1,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT)
-        if not self.binary:
+        if self.binary:
+            mask = self.mask_dataset[idx].reshape(1,config.CROP_IMAGE_WIDTH,config.CROP_IMAGE_HEIGHT)
+        else:
+            mask = self.mask_dataset[idx]
             mask = self.mask_dim_exp(mask)
         if self.transformation:
             to_PIL = transforms.ToPILImage()
